@@ -27,6 +27,7 @@ import {
 import { defaultKeymap, history, undo, redo, undoDepth, redoDepth } from '@codemirror/commands';
 import { languages } from '@codemirror/language-data';
 import { css } from '@codemirror/lang-css';
+import { javascript } from '@codemirror/lang-javascript';
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
 import { html } from '@codemirror/lang-html';
 import { autocompleteEmoji } from './extensions/autocompleteEmoji.js';
@@ -156,7 +157,15 @@ const CodeEditor = forwardRef(
   			? syntaxHighlighting(customHighlightStyle)
   			: syntaxHighlighting(legacyCustomHighlightStyle);
 
-			const languageExtension = language === 'css' ? css() : [markdown({ base: markdownLanguage, codeLanguages: languages }), html({ autoCloseTags: true })];
+			var languageExtension;
+			switch (language) {
+				case 'css': languageExtension = css(); break;
+				case 'javascript': languageExtension = javascript(); break;
+				default: {
+					languageExtension = [markdown({ base: markdownLanguage, codeLanguages: languages }), html({ autoCloseTags: true })];
+					break;
+				}
+			}
 			const themeExtension = Array.isArray(themes[editorTheme]) ? themes[editorTheme] : themes[editorTheme] || themes['default'];
 
 			return [
@@ -327,14 +336,37 @@ const CodeEditor = forwardRef(
 		useImperativeHandle(ref, ()=>({
 
 			injectText : (text)=>{
-				const view = viewRef.current;
+				if (text) {
+					const view = viewRef.current;
 
-				view.dispatch(
-					view.state.replaceSelection(text)
-				);
-				view.focus();
+					view.dispatch(
+						view.state.replaceSelection(text)
+					);
+					view.focus();
+				}
 			},
 			getCursorPosition : ()=>viewRef.current.state.selection.main.head,
+
+			replaceBetween : (start, end, text)=>{
+				const view = viewRef.current;
+				if(!view) return;
+
+				const current = view.state.doc.toString();
+
+				var startPos = current.indexOf(start);
+				if (startPos === -1) return;
+				startPos += start.length + 1;
+				if (current.charAt(startPos + 1) === '\n') ++startPos;
+
+				var endPos = current.indexOf(end, startPos);
+				if (endPos === -1) return;
+				if (current.charAt(endPos - 1) === '\n') --endPos;
+
+				view.dispatch({
+      				changes: { from: startPos, to: endPos, insert: text }
+				});
+				view.focus();
+			},
 
 			scrollToPage : (pageNumber, smooth = true)=>{
 				const view = viewRef.current;

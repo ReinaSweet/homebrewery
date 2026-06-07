@@ -11,7 +11,7 @@ import { nanoid }                    from 'nanoid';
 import { makePatches, applyPatches, stringifyPatches, parsePatch } from '@sanity/diff-match-patch';
 import { md5 }                       from 'hash-wasm';
 import { splitTextStyleAndMetadata,
-		 brewSnippetsToJSON, debugTextMismatch }        from '../shared/helpers.js';
+		 brewSnippetsToJSON, brewScriptsToJSON, debugTextMismatch }        from '../shared/helpers.js';
 import checkClientVersion            from './middleware/check-client-version.js';
 import dbCheck                       from './middleware/dbCheck.js';
 
@@ -220,6 +220,10 @@ const api = {
 		const metadata = _.pick(brew, ['title', 'description', 'tags', 'renderer', 'theme']);
 		const snippetsArray = brewSnippetsToJSON('brew_snippets', brew.snippets, null, false).snippets;
 		metadata.snippets = snippetsArray.length > 0 ? snippetsArray : undefined;
+
+		const scriptsArray = brewScriptsToJSON('brew_scripts', brew.scripts).scripts;
+		metadata.scripts = scriptsArray.length > 0 ? scriptsArray : undefined;
+
 		text = `\`\`\`metadata\n` +
 			`${yaml.dump(metadata)}\n` +
 			`\`\`\`\n\n` +

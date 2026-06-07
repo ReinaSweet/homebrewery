@@ -412,7 +412,8 @@ export default async function createApp(vite) {
 			renderer : req.brew.renderer,
 			theme    : req.brew.theme,
 			tags     : req.brew.tags,
-			snippets : req.brew.snippets
+			snippets : req.brew.snippets,
+			scripts  : req.brew.scripts
 		};
 		req.brew = _.defaults(brew, DEFAULT_BREW);
 

@@ -5,9 +5,10 @@ import createReactClass from 'create-react-class';
 
 import _ from 'lodash';
 import cx from 'classnames';
+import { usePapaParse } from 'react-papaparse';
 
 import { loadHistory } from '../../utils/versionHistory.js';
-import { brewSnippetsToJSON } from '@shared/helpers.js';
+import { brewSnippetsToJSON, brewScriptsToJSON } from '@shared/helpers.js';
 
 import Legacy5ePHB from '@themes/Legacy/5ePHB/snippets.js';
 import V3_5ePHB   from '@themes/V3/5ePHB/snippets.js';
@@ -43,8 +44,73 @@ const EditorThemes = [
     .sort((a, b)=>a.localeCompare(b))
 ];
 
+class GenFunctionAPI {
+	#props;
+
+	constructor(props) {
+		this.#props = props;
+	}
+
+	replaceBetween(start, end, text) {
+		this.#props.onReplaceBetween(start, end, text);
+	}
+
+	getSelected() {
+		//
+	}
+
+	replaceSelected(text) {
+		//
+	}
+
+	insertAfter(target, text) {
+		//
+	}
+
+	appendToEnd(text) {
+		//
+	}
+
+	readCSVFromFile() {
+		return new Promise(resolve => {
+			const onFileLoad = (e) => {
+				uploadFileElement.removeEventListener("change", onFileLoad);
+			
+				const file = e.target.files[0];
+				if (!file) return;
+			
+				const reader = new FileReader();
+				reader.onload = (e) => {
+					var fileContent = e.target.result;
+					const { readString } = usePapaParse();
+					readString(fileContent, {
+						worker: true,
+						header: true,
+						complete: (results) => {
+							resolve(results);
+						}
+					});
+				};
+				reader.readAsText(file);
+			};
+		
+			const uploadFileElement = document.getElementById('snippetUploadFile');
+			uploadFileElement.addEventListener("change", onFileLoad);
+			uploadFileElement.click();
+		});
+	}
+
+	readCSVFromSheets(id, gid) {
+		//
+	}
+
+	executeScript(scriptName) {
+		//
+	}
+}
+
 const execute = function(val, props){
-	if(_.isFunction(val)) return val(props);
+	if(_.isFunction(val)) return val(props, new GenFunctionAPI(props));
 	return val;
 };
 
@@ -56,6 +122,7 @@ const Snippetbar = createReactClass({
 			view              : 'text',
 			onViewChange      : ()=>{},
 			onInject          : ()=>{},
+			onReplaceBetween   : ()=>{},
 			onToggle          : ()=>{},
 			showEditButtons   : true,
 			renderer          : 'legacy',
@@ -93,7 +160,8 @@ const Snippetbar = createReactClass({
 		if(prevProps.renderer != this.props.renderer ||
 			prevProps.theme != this.props.theme ||
 			prevProps.themeBundle != this.props.themeBundle ||
-			prevProps.brew.snippets != this.props.brew.snippets) {
+			prevProps.brew.snippets != this.props.brew.snippets ||
+			prevProps.brew.scripts != this.props.brew.scripts) {
 			this.setState({
 				snippets : this.compileSnippets()
 			});
@@ -146,7 +214,17 @@ const Snippetbar = createReactClass({
 			}
 		}
 
-		const userSnippetsasJSON = brewSnippetsToJSON(this.props.brew.title || 'New Document', this.props.brew.snippets, this.props.themeBundle.snippets);
+		let userSnippetsasJSON = brewSnippetsToJSON('Snippets', this.props.brew.snippets, this.props.themeBundle.snippets);
+
+		// Use the snippet interface as is to handle scripts
+		const userScriptsasJSON = brewScriptsToJSON('Scripts', this.props.brew.scripts, true);
+		for (let script of userScriptsasJSON.scripts) {
+			userSnippetsasJSON.snippets.push({
+				name: script.name,
+				subsnippets: script.subscripts
+			});
+		}
+
 		compiledSnippets.push(userSnippetsasJSON);
 
 		return compiledSnippets;
@@ -154,6 +232,10 @@ const Snippetbar = createReactClass({
 
 	handleSnippetClick : function(injectedText){
 		this.props.onInject(injectedText);
+	},
+
+	handleReplaceBetween : function(start, end, text){
+		this.props.onReplaceBetween(start, end, text);
 	},
 
 	toggleThemeSelector : function(e){
@@ -196,6 +278,7 @@ const Snippetbar = createReactClass({
 					snippets={snippetGroup.snippets}
 					key={snippetGroup.groupName}
 					onSnippetClick={this.handleSnippetClick}
+					onReplaceBetween={this.handleReplaceBetween}
 					cursorPos={this.props.cursorPos}
 				/>;
 			})
@@ -273,7 +356,8 @@ const Snippetbar = createReactClass({
 						<i className='fas fa-palette' />
 						{this.state.themeSelector && this.renderThemeSelector()}
 					</div>
-				</div></>}
+				</div>
+				<div className='toolsBreak'></div></>}
 
 				<div className='tabs'>
 					<div className={cx('text', { selected: this.props.view === 'text' })}
@@ -287,6 +371,10 @@ const Snippetbar = createReactClass({
 					<div className={cx('snippet', { selected: this.props.view === 'snippet' })}
 						onClick={()=>this.props.onViewChange('snippet')}>
 						<i className='fas fa-th-list' />
+					</div>
+					<div className={cx('script', { selected: this.props.view === 'script' })}
+						onClick={()=>this.props.onViewChange('script')}>
+						<i className='fas fa-file-lines' />
 					</div>
 					<div className={cx('meta', { selected: this.props.view === 'meta' })}
 						onClick={()=>this.props.onViewChange('meta')}>
@@ -317,6 +405,7 @@ const SnippetGroup = createReactClass({
 			icon           : 'fas fa-rocket',
 			snippets       : [],
 			onSnippetClick : function(){},
+			onReplaceBetween: function(){},
 		};
 	},
 	handleSnippetClick : function(e, snippet){
@@ -350,6 +439,7 @@ const SnippetGroup = createReactClass({
 			<div className='dropdown'>
 				{this.renderSnippets(this.props.snippets)}
 			</div>
+			<input id='snippetUploadFile' className='newFromLocal' type='file' style={{ display: 'none' }} />
 		</div>;
 	},
 });

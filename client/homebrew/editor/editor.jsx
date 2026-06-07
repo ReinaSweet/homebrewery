@@ -42,6 +42,12 @@ const DEFAULT_SNIPPET_TEXT = dedent`
 				
 				This snippet is accessible in the brew tab, and will be inherited if the brew is used as a theme.
 `;
+
+const DEFAULT_SCRIPT_TEXT = dedent`
+				\script Cheers
+
+				api.appendToEnd("Cheers");
+`;
 let isJumping = false;
 let jumpSource = null;
 
@@ -79,10 +85,11 @@ const Editor = createReactClass({
 	editor     : React.createRef(null),
 	codeEditor : React.createRef(null),
 
-	isText  : function() {return this.state.view == 'text';},
-	isStyle : function() {return this.state.view == 'style';},
-	isMeta  : function() {return this.state.view == 'meta';},
-	isSnip  : function() {return this.state.view == 'snippet';},
+	isText   : function() {return this.state.view == 'text';},
+	isStyle  : function() {return this.state.view == 'style';},
+	isMeta   : function() {return this.state.view == 'meta';},
+	isSnip   : function() {return this.state.view == 'snippet';},
+	isScript : function() {return this.state.view == 'script';},
 
 	componentDidMount : function() {
 
@@ -152,6 +159,10 @@ const Editor = createReactClass({
 
 	handleInject : function(injectText){
 		this.codeEditor.current?.injectText(injectText);
+	},
+
+	handleReplaceBetween : function(start, end, text){
+		this.codeEditor.current?.replaceBetween(start, end, text);
 	},
 
 	handleViewChange : function(newView){
@@ -297,6 +308,23 @@ const Editor = createReactClass({
 					style={{  height: `calc(100% - 25px)` }}/>
 			</>;
 		}
+		if(this.isScript()){
+			if(!this.props.brew.scripts) { this.props.brew.scripts = DEFAULT_SCRIPT_TEXT; }
+			return <>
+				<CodeEditor key='codeEditor'
+					ref={this.codeEditor}
+					language='javascript'
+					tab='brewScripts'
+					view={this.state.view}
+					value={this.props.brew.scripts}
+					onChange={this.props.onBrewChange('scripts')}
+					enableFolding={true}
+					editorTheme={this.state.editorTheme}
+					renderer={this.props.brew.renderer}
+					rerenderParent={this.rerenderParent}
+					style={{  height: `calc(100% - 25px)` }}/>
+			</>;
+		}
 	},
 
 	redo : function(){
@@ -326,6 +354,7 @@ const Editor = createReactClass({
 					view={this.state.view}
 					onViewChange={this.handleViewChange}
 					onInject={this.handleInject}
+					onReplaceBetween={this.handleReplaceBetween}
 					showEditButtons={this.props.showEditButtons}
 					renderer={this.props.renderer}
 					theme={this.props.brew.theme}
