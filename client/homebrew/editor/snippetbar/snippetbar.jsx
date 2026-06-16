@@ -5,10 +5,10 @@ import createReactClass from 'create-react-class';
 
 import _ from 'lodash';
 import cx from 'classnames';
-import { usePapaParse } from 'react-papaparse';
 
 import { loadHistory } from '../../utils/versionHistory.js';
 import { brewSnippetsToJSON, brewScriptsToJSON } from '@shared/helpers.js';
+import { executeBrewScript } from '../scriptEditor/scriptEditor.jsx';
 
 import Legacy5ePHB from '@themes/Legacy/5ePHB/snippets.js';
 import V3_5ePHB   from '@themes/V3/5ePHB/snippets.js';
@@ -44,8 +44,9 @@ const EditorThemes = [
     .sort((a, b)=>a.localeCompare(b))
 ];
 
-const execute = function(val, props){
-	if(_.isFunction(val)) return val(props, props.onCreateScriptAPI());
+const execute = function(snippet, props){
+	if(_.isFunction(snippet.gen)) return snippet.gen(props);
+	if(snippet.isScript === true) return executeBrewScript(props.onCreateScriptAPI(), snippet);
 	return val;
 };
 
@@ -345,7 +346,7 @@ const SnippetGroup = createReactClass({
 	},
 	handleSnippetClick : function(e, snippet){
 		e.stopPropagation();
-		this.props.onSnippetClick(execute(snippet.gen, this.props));
+		this.props.onSnippetClick(execute(snippet, this.props));
 	},
 	renderSnippets : function(snippets){
 		return _.map(snippets, (snippet)=>{

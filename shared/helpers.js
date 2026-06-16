@@ -102,17 +102,9 @@ const brewScriptsToJSON = (menuTitle, userBrewScripts, isClientSide = false) => 
 				let subScript = {
 					name: scriptName,
 					gen: scriptSplit[scriptIndex + 1].replace(/\n$/, ''),
+					isScript: true
 				};
-
-				if (isClientSide) {
-					const functionBody = `${scriptSplit[scriptIndex + 1]}
-//# sourceURL=${scriptName.replace(/\s+/g, "-")}.js
-`;
-					const callbackFunction = new Function("api", functionBody);
-					subScript.gen = (props, api) => {
-						callbackFunction(api);
-					}
-				}
+				
 				scriptsArray.push(subScript);
 			}
 		}

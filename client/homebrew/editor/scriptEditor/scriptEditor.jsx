@@ -1,17 +1,42 @@
 
+const executeBrewScript = (api, subScript)=> {
+	const functionWithFakeFile = `${subScript.gen}
+//# sourceURL=Homebrewery_Script:_${subScript.name.replace(/\s+/g, "-")}
+`;
+    try {
+    	const callbackFunction = new Function("api", functionWithFakeFile);
+    	callbackFunction(api);
+    } catch (error) {
+        throw error;
+    }
+};
+
 class ScriptAPI {
     #editor;
+    #editorProps;
 
-    constructor(editor) {
+    constructor(editor, editorProps) {
         this.#editor = editor;
+        this.#editorProps = editorProps;
     }
 
-    replaceBetween(start, end, text) {
-        this.#editor?.replaceBetween(start, end, text);
+    /**
+     *  Get information from the captured editor
+     **/
+    getBetween(start, end) {
+        //
     }
 
     getSelected() {
         //
+    }
+
+    /**
+     *  Modify the captured editor
+     **/
+    replaceBetween(start, end, text) {
+        this.#editor?.replaceBetween(start, end, text);
+        this.#editorProps?.onBrewChange('text');
     }
 
     replaceSelected(text) {
@@ -26,6 +51,9 @@ class ScriptAPI {
         //
     }
 
+    /**
+     *  Functions to grab external data
+     **/
     readCSVFromFile() {
         return new Promise(resolve => {
             const onFileLoad = (e) => {
@@ -59,9 +87,15 @@ class ScriptAPI {
         //
     }
 
+    /**
+     *  Meta-scripting functionality
+     **/
     executeScript(scriptName) {
         //
     }
 }
 
+export {
+    executeBrewScript
+};
 export default ScriptAPI;
