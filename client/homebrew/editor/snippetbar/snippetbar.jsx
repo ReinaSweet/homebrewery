@@ -44,73 +44,8 @@ const EditorThemes = [
     .sort((a, b)=>a.localeCompare(b))
 ];
 
-class GenFunctionAPI {
-	#props;
-
-	constructor(props) {
-		this.#props = props;
-	}
-
-	replaceBetween(start, end, text) {
-		this.#props.onReplaceBetween(start, end, text);
-	}
-
-	getSelected() {
-		//
-	}
-
-	replaceSelected(text) {
-		//
-	}
-
-	insertAfter(target, text) {
-		//
-	}
-
-	appendToEnd(text) {
-		//
-	}
-
-	readCSVFromFile() {
-		return new Promise(resolve => {
-			const onFileLoad = (e) => {
-				uploadFileElement.removeEventListener("change", onFileLoad);
-			
-				const file = e.target.files[0];
-				if (!file) return;
-			
-				const reader = new FileReader();
-				reader.onload = (e) => {
-					var fileContent = e.target.result;
-					const { readString } = usePapaParse();
-					readString(fileContent, {
-						worker: true,
-						header: true,
-						complete: (results) => {
-							resolve(results);
-						}
-					});
-				};
-				reader.readAsText(file);
-			};
-		
-			const uploadFileElement = document.getElementById('snippetUploadFile');
-			uploadFileElement.addEventListener("change", onFileLoad);
-			uploadFileElement.click();
-		});
-	}
-
-	readCSVFromSheets(id, gid) {
-		//
-	}
-
-	executeScript(scriptName) {
-		//
-	}
-}
-
 const execute = function(val, props){
-	if(_.isFunction(val)) return val(props, new GenFunctionAPI(props));
+	if(_.isFunction(val)) return val(props, props.onCreateScriptAPI());
 	return val;
 };
 
@@ -122,8 +57,8 @@ const Snippetbar = createReactClass({
 			view              : 'text',
 			onViewChange      : ()=>{},
 			onInject          : ()=>{},
-			onReplaceBetween   : ()=>{},
 			onToggle          : ()=>{},
+			onCreateScriptAPI : ()=>{},
 			showEditButtons   : true,
 			renderer          : 'legacy',
 			undo              : ()=>{},
@@ -234,8 +169,8 @@ const Snippetbar = createReactClass({
 		this.props.onInject(injectedText);
 	},
 
-	handleReplaceBetween : function(start, end, text){
-		this.props.onReplaceBetween(start, end, text);
+	handleCreateScriptAPI : function() {
+		return this.props.onCreateScriptAPI();
 	},
 
 	toggleThemeSelector : function(e){
@@ -278,7 +213,7 @@ const Snippetbar = createReactClass({
 					snippets={snippetGroup.snippets}
 					key={snippetGroup.groupName}
 					onSnippetClick={this.handleSnippetClick}
-					onReplaceBetween={this.handleReplaceBetween}
+					onCreateScriptAPI={this.handleCreateScriptAPI}
 					cursorPos={this.props.cursorPos}
 				/>;
 			})
@@ -400,12 +335,12 @@ const SnippetGroup = createReactClass({
 	displayName     : 'SnippetGroup',
 	getDefaultProps : function() {
 		return {
-			brew           : {},
-			groupName      : '',
-			icon           : 'fas fa-rocket',
-			snippets       : [],
-			onSnippetClick : function(){},
-			onReplaceBetween: function(){},
+			brew             : {},
+			groupName        : '',
+			icon             : 'fas fa-rocket',
+			snippets         : [],
+			onSnippetClick   : function(){},
+			onCreateScriptAPI: function(){}
 		};
 	},
 	handleSnippetClick : function(e, snippet){

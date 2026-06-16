@@ -8,6 +8,7 @@ import dedent from 'dedent';
 import CodeEditor from '../../components/codeEditor/codeEditor.jsx';
 import SnippetBar from './snippetbar/snippetbar.jsx';
 import MetadataEditor from './metadataEditor/metadataEditor.jsx';
+import ScriptAPI from './scriptEditor/scriptEditor.jsx';
 
 const EDITOR_THEME_KEY = 'HB_editor_theme';
 
@@ -161,8 +162,8 @@ const Editor = createReactClass({
 		this.codeEditor.current?.injectText(injectText);
 	},
 
-	handleReplaceBetween : function(start, end, text){
-		this.codeEditor.current?.replaceBetween(start, end, text);
+	handleCreateScriptAPI : function() {
+		return new ScriptAPI(this.codeEditor.current);
 	},
 
 	handleViewChange : function(newView){
@@ -354,7 +355,7 @@ const Editor = createReactClass({
 					view={this.state.view}
 					onViewChange={this.handleViewChange}
 					onInject={this.handleInject}
-					onReplaceBetween={this.handleReplaceBetween}
+					onCreateScriptAPI={this.handleCreateScriptAPI}
 					showEditButtons={this.props.showEditButtons}
 					renderer={this.props.renderer}
 					theme={this.props.brew.theme}
