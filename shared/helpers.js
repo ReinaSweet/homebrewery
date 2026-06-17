@@ -91,22 +91,29 @@ const yamlSnippetsToText = (yamlObj) => {
 const brewScriptsToJSON = (menuTitle, userBrewScripts, isClientSide = false) => {
 	const textSplit = /^(\\script +.+\n)/gm;
 	const mpAsScripts = [];
-	// Local Scripts
+	let accumulatedLines = 0;
+
 	if (userBrewScripts) {
 		const scriptsArray = [];
 		const scriptSplit = userBrewScripts.trim().split(textSplit).slice(1);
 		for (let scriptIndex = 0; scriptIndex < scriptSplit.length; scriptIndex += 2) {
-			if (!scriptSplit[scriptIndex].startsWith('\\script ')) break;
-			const scriptName = scriptSplit[scriptIndex].split(/\\script +/)[1].split('\n')[0].trim();
-			if (scriptName.length != 0) {
-				let subScript = {
-					name: scriptName,
-					gen: scriptSplit[scriptIndex + 1].replace(/\n$/, ''),
-					isScript: true
-				};
-				
-				scriptsArray.push(subScript);
+			const scriptLines = scriptSplit[scriptIndex + 1].replace(/\n$/, '').split('\n');
+
+			if (scriptSplit[scriptIndex].startsWith('\\script ')) {
+				const scriptName = scriptSplit[scriptIndex].split(/\\script +/)[1].split('\n')[0].trim();
+				if (scriptName.length != 0) {
+					let subScript = {
+						name: scriptName,
+						gen: scriptLines.join('\n'),
+						isScript: true,
+						lineNumber: accumulatedLines
+					};
+
+					scriptsArray.push(subScript);
+				}
 			}
+
+			accumulatedLines += scriptLines.length + 1;
 		}
 		if (scriptsArray.length) {
 			mpAsScripts.push({

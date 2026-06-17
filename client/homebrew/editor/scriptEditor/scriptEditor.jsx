@@ -7,6 +7,12 @@ const executeBrewScript = (api, subScript)=> {
     	const callbackFunction = new Function("api", functionWithFakeFile);
     	callbackFunction(api);
     } catch (error) {
+        // This only fixes line counts on execution errors, not yet format errors
+        error.stack = error.stack.replace(/(Homebrewery_Script:[^\n]+:)([0-9]+):([0-9]+)\)/,
+            (match, preLineNumber, lineNumber, colNumber, offset, string) => {
+                const adjustedLineNumber = (+lineNumber) + subScript.lineNumber - 1;
+                return `${preLineNumber}${adjustedLineNumber}:${colNumber})`;
+            });
         throw error;
     }
 };
