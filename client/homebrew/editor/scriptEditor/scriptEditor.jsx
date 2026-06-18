@@ -48,71 +48,6 @@ class ScriptAPIWorker {
         this.#context = context;
     }
 
-    secureGlobal(global) {
-        const wl = {
-            "self": 1,
-            "global": 1,
-
-            "addEventListener": 1,
-            "removeEventListener": 1,
-            "postMessage": 1,
-            "eval": 1,
-            "Array": 1,
-            "Boolean": 1,
-            "Date": 1,
-            "Function": 1,
-            "Number" : 1,
-            "Object": 1,
-            "RegExp": 1,
-            "String": 1,
-            "Error": 1,
-            "EvalError": 1,
-            "RangeError": 1,
-            "ReferenceError": 1,
-            "SyntaxError": 1,
-            "TypeError": 1,
-            "isFinite": 1,
-            "isNaN": 1,
-            "parseFloat": 1,
-            "parseInt": 1,
-            "Infinity": 1,
-            "JSON": 1,
-            "Math": 1,
-            "NaN": 1,
-            "undefined": 1,
-            "TEMPORARY": 1,
-            "PERSISTENT": 1,
-            "console": 1,
-            "Promise": 1,
-            "ScriptAPIWorker": 1,
-            "ScriptAPIValidator": 1
-        };
-
-        Object.getOwnPropertyNames( global ).forEach( function( prop ) {
-            if( !wl.hasOwnProperty( prop ) ) {
-                Object.defineProperty( global, prop, {
-                    get : function() {
-                        throw new Error( "Security Exception: cannot access "+prop);
-                        return 1;
-                    }, 
-                    configurable : false
-                });    
-            }
-        });
-
-        Object.getOwnPropertyNames( global.__proto__ ).forEach( function( prop ) {
-            if( !wl.hasOwnProperty( prop ) ) {
-                Object.defineProperty( global.__proto__, prop, {
-                    get : function() {
-                        throw new Error( "Security Exception: cannot access "+prop);
-                        return 1;
-                    }, 
-                    configurable : false
-                });    
-            }
-        });
-    }
-
     #post(name, forwardArgs) {
         this.#context.postMessage({
             fname: name,
@@ -177,7 +112,6 @@ ${ScriptAPIValidator.toString()};
 ${ScriptAPIWorker.toString()};
 
 const workerAPI = new ScriptAPIWorker(self);
-workerAPI.secureGlobal(this);
 self.addEventListener("message", (event) => {
     if (event.data.fname === "start") {
         subScriptFunction(workerAPI);
