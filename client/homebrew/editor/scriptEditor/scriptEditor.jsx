@@ -1,15 +1,32 @@
 import { usePapaParse } from 'react-papaparse';
 
+class ScriptValidationError extends Error {
+    constructor(message) {
+        super(message);
+        this.name = this.constructor.name;
+        this.message = message;
+
+        if (this.stack) {
+            const removeAtAndBefore = "at ScriptAPIWorker";
+            this.stack = "api" + this.stack.substring(this.stack.indexOf(removeAtAndBefore) + removeAtAndBefore.length);
+        }
+    }
+}
+
 class ScriptAPIValidator {
     constructor() {}
 
     #validateTypes(forwardArgs, types) {
         if (forwardArgs.length !== types.length) {
-            throw new Error(`ERROR expected exactly ${types.length} arguments`);
+            throw new ScriptValidationError(`Expects exactly ${types.length} arguments`);
         }
         for (let i = 0; i < forwardArgs.length; ++i) {
             if (typeof forwardArgs[i] !== types[i]) {
-                throw new Error(`ERROR types don't match expected types from arguments`);
+                let argTypes = [];
+                for (let arg of forwardArgs) {
+                    argTypes.push(typeof arg);
+                }
+                throw new ScriptValidationError(`Expects types ${types.toString()}, got ${argTypes} instead`);
             }
         }
         return true;
@@ -65,7 +82,7 @@ class ScriptAPIValidator {
         }
 
         if (args[0].match(/[^\-a-z0-9_]/i)) {
-            return false;
+            throw new ScriptValidationError(`Sheet URL is ill-formed`);
         }
         return true;
     }
@@ -85,8 +102,23 @@ class ScriptAPIWorker {
     #context;
     #validator = new ScriptAPIValidator();
 
-    constructor(context) {
+    constructor(context, subScriptFunction) {
         this.#context = context;
+        
+        const self = this;
+        const listenForStart = (event) => {
+            if (event.data.fname === "start") {
+                context.removeEventListener("message", listenForStart);
+                try {
+                    subScriptFunction(self);
+                } catch (error) {
+                    const stack = error.stack.substring(0, error.stack.lastIndexOf(" at listenForStart"));
+                    self.doReportError(error.message, stack);
+                }
+            }
+        };
+
+        this.#context.addEventListener("message", listenForStart);
     }
 
     #post(name, forwardArgs) {
@@ -190,21 +222,13 @@ class ScriptAPI {
         // Start the subscript specifically on line 2
         // This lines up the Editor gutter line numbers with anything that errors or console logs
         const blobText = `'use strict';
-const subScriptFunction = (api)=>{${subScript.gen} };
+const subScriptFunction = (api)=>{${subScript.gen}
+};
 
+${ScriptValidationError.toString()};
 ${ScriptAPIValidator.toString()};
 ${ScriptAPIWorker.toString()};
-
-const workerAPI = new ScriptAPIWorker(self);
-self.addEventListener("message", (event) => {
-    if (event.data.fname === "start") {
-        try {
-            subScriptFunction(workerAPI);
-        } catch (error) {
-            workerAPI.doReportError(error.message, error.stack);
-        }
-    }
-});
+const workerAPI = new ScriptAPIWorker(self, subScriptFunction);
 `;
         try {
             const blob = new Blob([blobText], {type: 'application/javascript'});
@@ -217,6 +241,9 @@ self.addEventListener("message", (event) => {
             const scriptAPIself = this;
             this.#worker.addEventListener("message", (event) => {
                 scriptAPIself.onWorkerMessage(event);
+            });
+            this.#worker.addEventListener("error", (event) => {
+                scriptAPIself.onWorkerError(event);
             });
             this.#worker.postMessage({ fname: "start" });
             this.terminateAfterTimeout();
@@ -245,6 +272,22 @@ self.addEventListener("message", (event) => {
                 });
             }
         }
+    }
+
+    onWorkerError(event) {
+        if (!event.isTrusted) return;
+
+        // This should be SyntaxErrors, since we catch execution errors in a different path
+        // Worker SyntaxErrors don't have a stack, so, we have to manually format it
+        const adjustedLineNumber = event.lineno + this.#scriptLineNumber;
+        const stack = `${this.#scriptName}:${adjustedLineNumber}:${event.colno}`;
+
+        this.#editorProps?.onScriptRequest({
+            type: "reporterror",
+            message: event.message,
+            stack: stack,
+            scriptName: this.#scriptName
+        });
     }
 
     terminateAfterTimeout() {
@@ -361,8 +404,7 @@ self.addEventListener("message", (event) => {
             type: "reporterror",
             message: message,
             stack: stack,
-            scriptName: this.#scriptName,
-            scriptLineNumber: this.#scriptLineNumber
+            scriptName: this.#scriptName
         });
     }
 }

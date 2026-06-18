@@ -53,8 +53,8 @@ const ScriptRequestNotification = (props) => {
 
         case "reporterror": {
 	        return <Dialog className='notificationPopup' closeText='Close' onDismiss={dismissScriptRequest} >
-	        	<h1>Script Error: {props.request.message}</h1>
-                <p>{props.request.scriptName}:{props.request.scriptLineNumber}</p>
+	        	<h1>Script Error in: {props.request.scriptName}</h1>
+                <p>{props.request.message}</p>
                 <p>{props.request.stack}</p>
 	        </Dialog>;
         }
