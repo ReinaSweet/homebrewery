@@ -40,6 +40,13 @@ class ScriptAPIValidator {
         return true;
     }
 
+    doReplaceSelected(...args) {
+        if (!this.#validateTypes(args, ["string"])) {
+            return false;
+        }
+        return true;
+    }
+
     /**
      * validate 'get' functions
      */
@@ -58,6 +65,16 @@ class ScriptAPIValidator {
         }
 
         if (args[0].match(/[^\-a-z0-9_]/i)) {
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * validate utility 'do' functions
+     */
+    doReportError(...args) {
+        if (!this.#validateTypes(args, ["string", "string"])) {
             return false;
         }
         return true;
@@ -105,6 +122,12 @@ class ScriptAPIWorker {
         }
     }
 
+    doReplaceSelected(text) {
+        if (this.#validator.doReplaceSelected(text)) {
+            this.#post("doReplaceSelected", [text]);
+        }
+    }
+
     /**
      * Send to main thread 'get' functions and expect a promise
      */
@@ -125,9 +148,23 @@ class ScriptAPIWorker {
         }
         return null;
     }
+
+    /**
+     * Utilities, should all be 'do' or not talk at all to the ScriptAPI
+     */
+    doReportError(message, stack = "") {
+        if (this.#validator.doReportError(message, stack)) {
+            return this.#post("doReportError", [message, stack]);
+        }
+        return null;
+    }
 };
 
 class ScriptAPI {
+    #scriptName = "";
+    #scriptLineNumber = 0;
+    #scriptBlobURL = "";
+
     #editor;
     #editorProps;
     #worker;
@@ -147,6 +184,9 @@ class ScriptAPI {
     start(subScript) {
         this.terminateWorker();
 
+        this.#scriptName = subScript.name;
+        this.#scriptLineNumber = subScript.lineNumber;
+
         // Start the subscript specifically on line 2
         // This lines up the Editor gutter line numbers with anything that errors or console logs
         const blobText = `'use strict';
@@ -158,22 +198,31 @@ ${ScriptAPIWorker.toString()};
 const workerAPI = new ScriptAPIWorker(self);
 self.addEventListener("message", (event) => {
     if (event.data.fname === "start") {
-        subScriptFunction(workerAPI);
+        try {
+            subScriptFunction(workerAPI);
+        } catch (error) {
+            workerAPI.doReportError(error.message, error.stack);
+        }
     }
 });
 `;
-        const blob = new Blob([blobText], {type: 'application/javascript'});
-        this.#worker = new Worker(URL.createObjectURL(blob), {
-            credentials: 'omit',
-            name: subScript.name
-        });
+        try {
+            const blob = new Blob([blobText], {type: 'application/javascript'});
+            this.#scriptBlobURL = URL.createObjectURL(blob);
+            this.#worker = new Worker(this.#scriptBlobURL, {
+                credentials: 'omit',
+                name: this.#scriptName
+            });
 
-        const scriptAPIself = this;
-        this.#worker.addEventListener("message", (event) => {
-            scriptAPIself.onWorkerMessage(event);
-        });
-        this.#worker.postMessage({ fname: "start" });
-        this.terminateAfterTimeout();
+            const scriptAPIself = this;
+            this.#worker.addEventListener("message", (event) => {
+                scriptAPIself.onWorkerMessage(event);
+            });
+            this.#worker.postMessage({ fname: "start" });
+            this.terminateAfterTimeout();
+        } catch (error) {
+            this.doReportError(error.message, error.stack);
+        }
     }
 
     onWorkerMessage(event) {
@@ -287,7 +336,7 @@ self.addEventListener("message", (event) => {
     }
 
     doReplaceSelected(text) {
-        //
+        this.#editor?.injectText(text);
     }
 
     doInsertAfter(target, text) {
@@ -300,6 +349,21 @@ self.addEventListener("message", (event) => {
 
     doAppendToEnd(text) {
         //
+    }
+
+    /**
+     * Utilities, meta information
+     * None should do any actual modifications
+     */
+    doReportError(message, stack) {
+        stack = stack.replaceAll(this.#scriptBlobURL, this.#scriptName);
+        this.#editorProps?.onScriptRequest({
+            type: "reporterror",
+            message: message,
+            stack: stack,
+            scriptName: this.#scriptName,
+            scriptLineNumber: this.#scriptLineNumber
+        });
     }
 }
 
