@@ -258,6 +258,24 @@ const CodeEditor = forwardRef(
   			});
 		};
 
+		const findWrappingPositionsInText = (start, end, text)=>{
+			let startPos = text.indexOf(start);
+			if (startPos === -1) return null;
+			
+			startPos += start.length;
+			if (text.charAt(startPos + 1) === '\n') ++startPos;
+
+			let endPos = text.indexOf(end, startPos);
+			if (endPos === -1) return null;
+
+			if (text.charAt(endPos - 1) === '\n') --endPos;
+
+			return {
+				start: startPos,
+				end: endPos
+			};
+		}
+
 		useEffect(()=>{
 			const view = viewRef.current;
 			if(!view) return;
@@ -347,23 +365,27 @@ const CodeEditor = forwardRef(
 			},
 			getCursorPosition : ()=>viewRef.current.state.selection.main.head,
 
-			replaceBetween : (start, end, text)=>{
+			getBetween : (start, end) => {
+				const view = viewRef.current;
+				if(!view) return "";
+				const current = view.state.doc.toString();
+				
+				const positions = findWrappingPositionsInText(start, end, current);
+				if(!positions) return "";
+
+				return current.substring(positions.start, positions.end);
+			},
+
+			replaceBetween : (start, end, text) => {
 				const view = viewRef.current;
 				if(!view) return;
-
 				const current = view.state.doc.toString();
 
-				var startPos = current.indexOf(start);
-				if (startPos === -1) return;
-				startPos += start.length + 1;
-				if (current.charAt(startPos + 1) === '\n') ++startPos;
-
-				var endPos = current.indexOf(end, startPos);
-				if (endPos === -1) return;
-				if (current.charAt(endPos - 1) === '\n') --endPos;
+				const positions = findWrappingPositionsInText(start, end, current);
+				if(!positions) return;
 
 				view.dispatch({
-      				changes: { from: startPos, to: endPos, insert: text }
+      				changes: { from: positions.start, to: positions.end, insert: text }
 				});
 				view.focus();
 			},

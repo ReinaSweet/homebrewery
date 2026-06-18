@@ -30,8 +30,21 @@ class ScriptAPIValidator {
         return false;
     }
 
+    /**
+     * validate 'do' functions
+     */
     doReplaceBetween(...args) {
         if (!this.#validateTypes(args, ["string", "string", "string"])) {
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * validate 'get' functions
+     */
+    getBetween(...args) {
+        if (!this.#validateTypes(args, ["string", "string"])) {
             return false;
         }
         return true;
@@ -83,10 +96,23 @@ class ScriptAPIWorker {
         });
     }
 
+    /**
+     * Send to main thread 'do' functions
+     */
     doReplaceBetween(start, end, text) {
         if (this.#validator.doReplaceBetween(start, end, text)) {
             this.#post("doReplaceBetween", [start, end, text]);
         }
+    }
+
+    /**
+     * Send to main thread 'get' functions and expect a promise
+     */
+    getBetween(start, end) {
+        if (this.#validator.getBetween(start, end)) {
+            return this.#postAndExpect("getBetween", [start, end]);
+        }
+        return null;
     }
 
     getCSVFromFile() {
@@ -201,7 +227,10 @@ self.addEventListener("message", (event) => {
      *  get Functions must always return a Promise
      **/
     getBetween(start, end) {
-        //
+        return new Promise((resolve) => {
+            const textBetween = this.#editor?.getBetween(start, end);
+            resolve(textBetween);
+        });
     }
 
     getSelected() {
@@ -262,6 +291,10 @@ self.addEventListener("message", (event) => {
     }
 
     doInsertAfter(target, text) {
+        //
+    }
+
+    doAppendToStart(text) {
         //
     }
 
