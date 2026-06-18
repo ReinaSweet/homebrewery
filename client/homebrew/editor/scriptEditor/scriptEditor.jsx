@@ -89,6 +89,13 @@ class ScriptAPIValidator {
         return true;
     }
 
+    doInsertAfter(...args) {
+        if (!this.#validateTypes("doInsertAfter", args, ["string", "string"])) {
+            return false;
+        }
+        return true;
+    }
+
     doAppendToStart(...args) {
         if (!this.#validateTypes("doAppendToStart", args, ["string"])) {
             return false;
@@ -194,6 +201,12 @@ class ScriptAPIWorker {
     doReplaceSelected(text) {
         if (this.#validator.doReplaceSelected(text)) {
             this.#post("doReplaceSelected", [text]);
+        }
+    }
+
+    doInsertAfter(target, text) {
+        if (this.#validator.doInsertAfter(target, text)) {
+            this.#post("doInsertAfter", [target, text]);
         }
     }
 
@@ -410,7 +423,10 @@ const workerAPI = new ScriptAPIWorker(self, subScriptFunction);
     }
 
     doInsertAfter(target, text) {
-        //
+        const position = this.#codeEditor?.getPositionOf(target);
+        if (position > -1) {
+            this.#codeEditor?.insertAt(position + target.length, text);
+        }
     }
 
     doAppendToStart(text) {
@@ -418,8 +434,8 @@ const workerAPI = new ScriptAPIWorker(self, subScriptFunction);
     }
 
     doAppendToEnd(text) {
-        const codeSize = this.#codeEditor?.getCurrentLength();
-        this.#codeEditor?.insertAt(codeSize, text);
+        const position = this.#codeEditor?.getCurrentLength();
+        this.#codeEditor?.insertAt(position, text);
     }
 
     /**

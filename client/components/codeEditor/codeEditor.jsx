@@ -387,7 +387,6 @@ const CodeEditor = forwardRef(
 				view.dispatch({
       				changes: { from: positions.start, to: positions.end, insert: text }
 				});
-				view.focus();
 			},
 
 			getCurrentLength : () => {
@@ -395,6 +394,13 @@ const CodeEditor = forwardRef(
 				if(!view) return "";
 				const current = view.state.doc.toString();
 				return current.length;
+			},
+
+			getPositionOf : (text) => {
+				const view = viewRef.current;
+				if(!view) return "";
+				const current = view.state.doc.toString();
+				return current.indexOf(text);
 			},
 
 			insertAt : (position, text) => {
