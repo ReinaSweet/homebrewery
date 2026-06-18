@@ -88,7 +88,7 @@ const yamlSnippetsToText = (yamlObj) => {
 };
 
 // Convert the templates from a brew to a Snippets Structure.
-const brewScriptsToJSON = (menuTitle, userBrewScripts) => {
+const brewScriptsToJSON = (menuTitle, userBrewScripts, isClientSide = false) => {
 	const textSplit = /^(\\script +.+\n)/gm;
 	const mpAsScripts = [];
 	let accumulatedLines = 0;
@@ -104,10 +104,13 @@ const brewScriptsToJSON = (menuTitle, userBrewScripts) => {
 				if (scriptName.length != 0) {
 					let subScript = {
 						name: scriptName,
-						gen: scriptLines.join('\n'),
-						isScript: true,
-						lineNumber: accumulatedLines
+						gen: scriptLines.join('\n')
 					};
+
+					if (isClientSide) {
+						subScript.isScript = true;
+						subScript.lineNumber = accumulatedLines;
+					}
 
 					scriptsArray.push(subScript);
 				}

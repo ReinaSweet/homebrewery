@@ -153,7 +153,7 @@ const Snippetbar = createReactClass({
 		let userSnippetsasJSON = brewSnippetsToJSON('Snippets', this.props.brew.snippets, this.props.themeBundle.snippets);
 
 		// Use the snippet interface as is to handle scripts
-		const userScriptsasJSON = brewScriptsToJSON('Scripts', this.props.brew.scripts);
+		const userScriptsasJSON = brewScriptsToJSON('Scripts', this.props.brew.scripts, true);
 		for (let script of userScriptsasJSON.scripts) {
 			userSnippetsasJSON.snippets.push({
 				name: script.name,

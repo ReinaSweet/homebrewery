@@ -103,10 +103,10 @@ class ScriptAPI {
     start(subScript) {
         this.terminateWorker();
 
-        const blobText = `
-const subScriptFunction = (api)=>{
-    ${subScript.gen}
-};
+        // Start the subscript specifically on line 2
+        // This lines up the Editor gutter line numbers with anything that errors or console logs
+        const blobText = `'use strict';
+const subScriptFunction = (api)=>{${subScript.gen} };
 
 ${ScriptAPIValidator.toString()};
 ${ScriptAPIWorker.toString()};
@@ -119,7 +119,10 @@ self.addEventListener("message", (event) => {
 });
 `;
         const blob = new Blob([blobText], {type: 'application/javascript'});
-        this.#worker = new Worker(URL.createObjectURL(blob));
+        this.#worker = new Worker(URL.createObjectURL(blob), {
+            credentials: 'omit',
+            name: subScript.name
+        });
 
         const scriptAPIself = this;
         this.#worker.addEventListener("message", (event) => {
@@ -133,6 +136,7 @@ self.addEventListener("message", (event) => {
         if (typeof event.data === "object" && this.#validator.validateUntrustedFunction(event.data.fname, event.data.args)) {
             if (event.data.fname.indexOf("do") === 0) {
                 this[event.data.fname].apply(this, event.data.args);
+            
             } else if (event.data.fname.indexOf("get") === 0) {
                 const promise = this[event.data.fname].apply(this, event.data.args);
                 const scriptAPIself = this;
