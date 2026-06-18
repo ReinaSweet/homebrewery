@@ -153,7 +153,7 @@ const Snippetbar = createReactClass({
 		let userSnippetsasJSON = brewSnippetsToJSON('Snippets', this.props.brew.snippets, this.props.themeBundle.snippets);
 
 		// Use the snippet interface as is to handle scripts
-		const userScriptsasJSON = brewScriptsToJSON('Scripts', this.props.brew.scripts, true);
+		const userScriptsasJSON = brewScriptsToJSON('Scripts', this.props.brew.scripts);
 		for (let script of userScriptsasJSON.scripts) {
 			userSnippetsasJSON.snippets.push({
 				name: script.name,
@@ -375,7 +375,6 @@ const SnippetGroup = createReactClass({
 			<div className='dropdown'>
 				{this.renderSnippets(this.props.snippets)}
 			</div>
-			<input id='snippetUploadFile' className='newFromLocal' type='file' style={{ display: 'none' }} />
 		</div>;
 	},
 });

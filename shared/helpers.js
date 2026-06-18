@@ -88,7 +88,7 @@ const yamlSnippetsToText = (yamlObj) => {
 };
 
 // Convert the templates from a brew to a Snippets Structure.
-const brewScriptsToJSON = (menuTitle, userBrewScripts, isClientSide = false) => {
+const brewScriptsToJSON = (menuTitle, userBrewScripts) => {
 	const textSplit = /^(\\script +.+\n)/gm;
 	const mpAsScripts = [];
 	let accumulatedLines = 0;

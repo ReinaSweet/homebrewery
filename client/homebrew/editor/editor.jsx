@@ -66,6 +66,7 @@ const Editor = createReactClass({
 
 			onCursorPageChange : ()=>{},
 			onViewPageChange   : ()=>{},
+			onScriptRequest    : ()=>{},
 
 			editorTheme : 'default',
 			renderer    : 'legacy',
