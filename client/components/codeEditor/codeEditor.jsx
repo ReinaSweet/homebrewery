@@ -390,6 +390,22 @@ const CodeEditor = forwardRef(
 				view.focus();
 			},
 
+			getCurrentLength : () => {
+				const view = viewRef.current;
+				if(!view) return "";
+				const current = view.state.doc.toString();
+				return current.length;
+			},
+
+			insertAt : (position, text) => {
+				const view = viewRef.current;
+				if(!view) return;
+
+				view.dispatch({
+      				changes: { from: position, insert: text }
+				});
+			},
+
 			scrollToPage : (pageNumber, smooth = true)=>{
 				const view = viewRef.current;
 				if(!view) return;

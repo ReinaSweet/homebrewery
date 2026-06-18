@@ -48,7 +48,7 @@ const DEFAULT_SNIPPET_TEXT = dedent`
 const DEFAULT_SCRIPT_TEXT = dedent`
 				\script Cheers
 
-				api.appendToEnd("Cheers");
+				api.doAppendToEnd("Cheers");
 `;
 let isJumping = false;
 let jumpSource = null;
