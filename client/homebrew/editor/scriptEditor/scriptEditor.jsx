@@ -50,6 +50,29 @@ class ScriptAPIValidator {
     }
 
     /**
+     * validate 'get' functions
+     */
+    getBetween(...args) {
+        if (!this.#validateTypes("getBetween", args, ["string", "string"])) {
+            return false;
+        }
+        return true;
+    }
+
+    getCSVFromFile() { return true; }
+
+    getCSVFromSheets(...args) {
+        if (!this.#validateTypes("getCSVFromSheets", args, ["string", "number"])) {
+            return false;
+        }
+
+        if (args[0].match(/[^\-a-z0-9_]/i)) {
+            throw new ScriptValidationError(`getCSVFromSheets URL is ill-formed`);
+        }
+        return true;
+    }
+
+    /**
      * validate 'do' functions
      */
     doReplaceBetween(...args) {
@@ -76,29 +99,6 @@ class ScriptAPIValidator {
     doAppendToEnd(...args) {
         if (!this.#validateTypes("doAppendToEnd", args, ["string"])) {
             return false;
-        }
-        return true;
-    }
-
-    /**
-     * validate 'get' functions
-     */
-    getBetween(...args) {
-        if (!this.#validateTypes("getBetween", args, ["string", "string"])) {
-            return false;
-        }
-        return true;
-    }
-
-    getCSVFromFile() { return true; }
-
-    getCSVFromSheets(...args) {
-        if (!this.#validateTypes("getCSVFromSheets", args, ["string", "number"])) {
-            return false;
-        }
-
-        if (args[0].match(/[^\-a-z0-9_]/i)) {
-            throw new ScriptValidationError(`getCSVFromSheets URL is ill-formed`);
         }
         return true;
     }
@@ -162,6 +162,27 @@ class ScriptAPIWorker {
     }
 
     /**
+     * Send to main thread 'get' functions and expect a promise
+     */
+    getBetween(start, end) {
+        if (this.#validator.getBetween(start, end)) {
+            return this.#postAndExpect("getBetween", [start, end]);
+        }
+        return null;
+    }
+
+    getCSVFromFile() {
+        return this.#postAndExpect("getCSVFromFile", []);
+    }
+
+    getCSVFromSheets(sheetId, gid = 0) {
+        if (this.#validator.getCSVFromSheets(sheetId, gid)) {
+            return this.#postAndExpect("getCSVFromSheets", [sheetId, gid]);
+        }
+        return null;
+    }
+
+    /**
      * Send to main thread 'do' functions
      */
     doReplaceBetween(start, end, text) {
@@ -186,27 +207,6 @@ class ScriptAPIWorker {
         if (this.#validator.doAppendToEnd(text)) {
             this.#post("doAppendToEnd", [text]);
         }
-    }
-
-    /**
-     * Send to main thread 'get' functions and expect a promise
-     */
-    getBetween(start, end) {
-        if (this.#validator.getBetween(start, end)) {
-            return this.#postAndExpect("getBetween", [start, end]);
-        }
-        return null;
-    }
-
-    getCSVFromFile() {
-        return this.#postAndExpect("getCSVFromFile", []);
-    }
-
-    getCSVFromSheets(sheetId, gid = 0) {
-        if (this.#validator.getCSVFromSheets(sheetId, gid)) {
-            return this.#postAndExpect("getCSVFromSheets", [sheetId, gid]);
-        }
-        return null;
     }
 
     /**
