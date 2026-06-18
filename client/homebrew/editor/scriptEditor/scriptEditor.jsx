@@ -84,7 +84,7 @@ class ScriptAPIValidator {
         }
 
         if (args[0].match(/[^\-a-z0-9_]/i)) {
-            throw new ScriptValidationError(`Sheet URL is ill-formed`);
+            throw new ScriptValidationError(`getCSVFromSheets URL is ill-formed`);
         }
         return true;
     }
