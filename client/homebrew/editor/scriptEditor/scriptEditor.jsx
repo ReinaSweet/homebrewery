@@ -7,8 +7,10 @@ class ScriptValidationError extends Error {
         this.message = message;
 
         if (this.stack) {
-            const removeAtAndBefore = "at ScriptAPIWorker";
-            this.stack = "api" + this.stack.substring(this.stack.indexOf(removeAtAndBefore) + removeAtAndBefore.length);
+            let seekRemoveToIndex = this.stack.indexOf("at ScriptAPIWorker");
+            seekRemoveToIndex = this.stack.indexOf(")", seekRemoveToIndex);
+            seekRemoveToIndex = this.stack.indexOf("at subScriptFunction", seekRemoveToIndex);
+            this.stack = this.stack.substring(seekRemoveToIndex);
         }
     }
 }
@@ -16,9 +18,9 @@ class ScriptValidationError extends Error {
 class ScriptAPIValidator {
     constructor() {}
 
-    #validateTypes(forwardArgs, types) {
+    #validateTypes(fname, forwardArgs, types) {
         if (forwardArgs.length !== types.length) {
-            throw new ScriptValidationError(`Expects exactly ${types.length} arguments`);
+            throw new ScriptValidationError(`${fname} expects exactly ${types.length} arguments`);
         }
         for (let i = 0; i < forwardArgs.length; ++i) {
             if (typeof forwardArgs[i] !== types[i]) {
@@ -26,7 +28,7 @@ class ScriptAPIValidator {
                 for (let arg of forwardArgs) {
                     argTypes.push(typeof arg);
                 }
-                throw new ScriptValidationError(`Expects types ${types.toString()}, got ${argTypes} instead`);
+                throw new ScriptValidationError(`${fname} expects types ${types.toString()}, got ${argTypes} instead`);
             }
         }
         return true;
@@ -51,14 +53,14 @@ class ScriptAPIValidator {
      * validate 'do' functions
      */
     doReplaceBetween(...args) {
-        if (!this.#validateTypes(args, ["string", "string", "string"])) {
+        if (!this.#validateTypes("doReplaceBetween", args, ["string", "string", "string"])) {
             return false;
         }
         return true;
     }
 
     doReplaceSelected(...args) {
-        if (!this.#validateTypes(args, ["string"])) {
+        if (!this.#validateTypes("doReplaceSelected", args, ["string"])) {
             return false;
         }
         return true;
@@ -68,7 +70,7 @@ class ScriptAPIValidator {
      * validate 'get' functions
      */
     getBetween(...args) {
-        if (!this.#validateTypes(args, ["string", "string"])) {
+        if (!this.#validateTypes("getBetween", args, ["string", "string"])) {
             return false;
         }
         return true;
@@ -77,7 +79,7 @@ class ScriptAPIValidator {
     getCSVFromFile() { return true; }
 
     getCSVFromSheets(...args) {
-        if (!this.#validateTypes(args, ["string", "number"])) {
+        if (!this.#validateTypes("getCSVFromSheets", args, ["string", "number"])) {
             return false;
         }
 
@@ -91,7 +93,7 @@ class ScriptAPIValidator {
      * validate utility 'do' functions
      */
     doReportError(...args) {
-        if (!this.#validateTypes(args, ["string", "string"])) {
+        if (!this.#validateTypes("doReportError", args, ["string", "string"])) {
             return false;
         }
         return true;
