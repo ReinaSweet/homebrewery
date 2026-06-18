@@ -38,6 +38,17 @@ class ScriptAPIValidator {
     }
 
     getCSVFromFile() { return true; }
+
+    getCSVFromSheets(...args) {
+        if (!this.#validateTypes(args, ["string", "number"])) {
+            return false;
+        }
+
+        if (args[0].match(/[^\-a-z0-9_]/i)) {
+            return false;
+        }
+        return true;
+    }
 };
 
 class ScriptAPIWorker {
@@ -80,6 +91,13 @@ class ScriptAPIWorker {
 
     getCSVFromFile() {
         return this.#postAndExpect("getCSVFromFile", []);
+    }
+
+    getCSVFromSheets(sheetId, gid = 0) {
+        if (this.#validator.getCSVFromSheets(sheetId, gid)) {
+            return this.#postAndExpect("getCSVFromSheets", [sheetId, gid]);
+        }
+        return null;
     }
 };
 
@@ -200,6 +218,27 @@ self.addEventListener("message", (event) => {
                     const { readString } = usePapaParse();
                     readString(fileContent, {
                         worker: true,
+                        header: true,
+                        complete: (results) => {
+                            resolve(results);
+                        }
+                    });
+                }
+            });
+        });
+    }
+
+    getCSVFromSheets(sheetId, gid) {
+        return new Promise((resolve) => {
+            const URL = `https://docs.google.com/spreadsheets/d/e/${sheetId}/pub?gid=${gid}&single=true&output=csv`;
+            this.#editorProps?.onScriptRequest({
+                type: "readurl",
+                message: "Read sheets CSV from URL:",
+                URL: URL,
+                callback: () => {
+                    const { readRemoteFile } = usePapaParse();
+                    readRemoteFile(URL, {
+                        download: true,
                         header: true,
                         complete: (results) => {
                             resolve(results);

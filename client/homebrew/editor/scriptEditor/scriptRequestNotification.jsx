@@ -34,6 +34,22 @@ const ScriptRequestNotification = (props) => {
 	        	<p>If you wish to ignore this, click Cancel.</p>
 	        </Dialog>;
         }
+        
+        case "readurl": {
+            const onURLCommitted = () => {
+                props.request.callback();
+                dismissScriptRequest();
+            };
+
+	        return <Dialog className='notificationPopup' closeText='Cancel' onDismiss={dismissScriptRequest} >
+	        	<h1>{props.request.message}</h1>
+                <p>{props.request.URL}</p>
+	        	<p></p>
+			    <button className='uploadFile' onClick={onURLCommitted}>Allow URL Read</button>
+	        	<hr />
+	        	<p>If you wish to ignore this, click Cancel.</p>
+	        </Dialog>;
+        }
 
         default: break;
     }
