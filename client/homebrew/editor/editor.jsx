@@ -9,6 +9,7 @@ import CodeEditor from '../../components/codeEditor/codeEditor.jsx';
 import SnippetBar from './snippetbar/snippetbar.jsx';
 import MetadataEditor from './metadataEditor/metadataEditor.jsx';
 import ScriptAPI from './scriptEditor/scriptEditor.jsx';
+import ScriptRequestNotification from './scriptEditor/scriptRequestNotification.jsx';
 
 const EDITOR_THEME_KEY = 'HB_editor_theme';
 
@@ -66,7 +67,6 @@ const Editor = createReactClass({
 
 			onCursorPageChange : ()=>{},
 			onViewPageChange   : ()=>{},
-			onScriptRequest    : ()=>{},
 
 			editorTheme : 'default',
 			renderer    : 'legacy',
@@ -81,6 +81,7 @@ const Editor = createReactClass({
 			editorTheme      : this.props.editorTheme,
 			view             : 'text', //'text', 'style', 'meta', 'snippet'
 			snippetBarHeight : 26,
+			scriptRequest    : null,
 		};
 	},
 
@@ -164,7 +165,7 @@ const Editor = createReactClass({
 	},
 
 	handleCreateScriptAPI : function() {
-		return new ScriptAPI(this.codeEditor.current, this.props);
+		return new ScriptAPI(this.codeEditor.current, this);
 	},
 
 	handleViewChange : function(newView){
@@ -241,6 +242,12 @@ const Editor = createReactClass({
 		window.localStorage.setItem(EDITOR_THEME_KEY, newTheme);
 		this.setState({
 			editorTheme : newTheme
+		});
+	},
+
+	updateScriptRequest : function(newRequest){
+		this.setState({
+			scriptRequest : newRequest
 		});
 	},
 
@@ -371,6 +378,8 @@ const Editor = createReactClass({
 					cursorPos={this.codeEditor.current?.getCursorPosition() || {}}
 					updateBrew={this.props.updateBrew}
 				/>
+
+				<ScriptRequestNotification request={this.state.scriptRequest} updateScriptRequest={this.updateScriptRequest} />
 
 				{this.renderEditor()}
 			</div>

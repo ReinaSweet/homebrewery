@@ -34,7 +34,6 @@ import { makePatches, stringifyPatches } from '@sanity/diff-match-patch';
 
 import ShareNavItem              from '@navbar/share.navitem.jsx';
 import LockNotification from './lockNotification/lockNotification.jsx';
-import ScriptRequestNotification from '../../editor/scriptEditor/scriptRequestNotification.jsx';
 import { updateHistory, versionHistoryGarbageCollection } from '../../utils/versionHistory.js';
 import googleDriveIcon from '../../googleDrive.svg';
 
@@ -75,7 +74,6 @@ const EditPage = (props)=>{
 	const [confirmGoogleTransfer, setConfirmGoogleTransfer] = useState(false);
 	const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
 	const [warnUnsavedChanges, setWarnUnsavedChanges] = useState(true);
-	const [scriptRequest, setScriptRequest] = useState(null);
 
 	const editorRef          = useRef(null);
 	const lastSavedBrew      = useRef(_.cloneDeep(props.brew));
@@ -383,8 +381,6 @@ const EditPage = (props)=>{
 
 			{currentBrew.lock && <LockNotification shareId={currentBrew.shareId} message={currentBrew.lock.editMessage} reviewRequested={currentBrew.lock.reviewRequested}/>}
 
-			<ScriptRequestNotification request={scriptRequest} updateScriptRequest={setScriptRequest} />
-
 			<div className='content'>
 				<SplitPane onDragFinish={handleSplitMove}>
 					<Editor
@@ -398,7 +394,6 @@ const EditPage = (props)=>{
 						updateBrew={updateBrew}
 						onCursorPageChange={setCurrentEditorCursorPageNum}
 						onViewPageChange={setCurrentEditorViewPageNum}
-						onScriptRequest={setScriptRequest}
 						currentEditorViewPageNum={currentEditorViewPageNum}
 						currentEditorCursorPageNum={currentEditorCursorPageNum}
 						currentBrewRendererPageNum={currentBrewRendererPageNum}

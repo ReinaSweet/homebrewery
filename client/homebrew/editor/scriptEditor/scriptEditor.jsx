@@ -199,17 +199,17 @@ class ScriptAPI {
     #scriptLineNumber = 0;
     #scriptBlobURL = "";
 
+    #codeEditor;
     #editor;
-    #editorProps;
     #worker;
 
     #validator = new ScriptAPIValidator();
     #pauseStandardTimeoutCount = 0;
     #unpauseStandardTimeoutCount = 0;
 
-    constructor(editor, editorProps) {
+    constructor(codeEditor, editor) {
+        this.#codeEditor = codeEditor;
         this.#editor = editor;
-        this.#editorProps = editorProps;
     }
 
     /**
@@ -284,7 +284,7 @@ const workerAPI = new ScriptAPIWorker(self, subScriptFunction);
         const adjustedLineNumber = event.lineno + this.#scriptLineNumber;
         const stack = `${this.#scriptName}:${adjustedLineNumber}:${event.colno}`;
 
-        this.#editorProps?.onScriptRequest({
+        this.#editor?.updateScriptRequest({
             type: "reporterror",
             message: event.message,
             stack: stack,
@@ -322,7 +322,7 @@ const workerAPI = new ScriptAPIWorker(self, subScriptFunction);
      **/
     getBetween(start, end) {
         return new Promise((resolve) => {
-            const textBetween = this.#editor?.getBetween(start, end);
+            const textBetween = this.#codeEditor?.getBetween(start, end);
             resolve(textBetween);
         });
     }
@@ -333,7 +333,7 @@ const workerAPI = new ScriptAPIWorker(self, subScriptFunction);
     
     getCSVFromFile() {
         return new Promise((resolve) => {
-            this.#editorProps?.onScriptRequest({
+            this.#editor?.updateScriptRequest({
                 type: "uploadfile",
                 message: "Upload a CSV",
                 callback: (e) => {
@@ -354,7 +354,7 @@ const workerAPI = new ScriptAPIWorker(self, subScriptFunction);
     getCSVFromSheets(sheetId, gid) {
         return new Promise((resolve) => {
             const URL = `https://docs.google.com/spreadsheets/d/e/${sheetId}/pub?gid=${gid}&single=true&output=csv`;
-            this.#editorProps?.onScriptRequest({
+            this.#editor?.updateScriptRequest({
                 type: "readurl",
                 message: "Read sheets CSV from URL:",
                 URL: URL,
@@ -376,12 +376,11 @@ const workerAPI = new ScriptAPIWorker(self, subScriptFunction);
      *  Modifies the captured editor
      **/
     doReplaceBetween(start, end, text) {
-        this.#editor?.replaceBetween(start, end, text);
-        this.#editorProps?.onBrewChange('text');
+        this.#codeEditor?.replaceBetween(start, end, text);
     }
 
     doReplaceSelected(text) {
-        this.#editor?.injectText(text);
+        this.#codeEditor?.injectText(text);
     }
 
     doInsertAfter(target, text) {
@@ -402,7 +401,7 @@ const workerAPI = new ScriptAPIWorker(self, subScriptFunction);
      */
     doReportError(message, stack) {
         stack = stack.replaceAll(this.#scriptBlobURL, this.#scriptName);
-        this.#editorProps?.onScriptRequest({
+        this.#editor?.updateScriptRequest({
             type: "reporterror",
             message: message,
             stack: stack,
