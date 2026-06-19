@@ -158,29 +158,26 @@ const CodeEditor = forwardRef(
   			: syntaxHighlighting(legacyCustomHighlightStyle);
 
 			let languageExtension;
+			let langSpecificAutocomplete = [];
+			let langSpecificKeymap = [];
+
 			switch (language) {
-				case 'css': languageExtension = css(); break;
-				case 'javascript': languageExtension = javascript(); break;
+				case 'css': {
+					languageExtension = css();
+					break;
+				}
+				case 'javascript': {
+					languageExtension = javascript();
+					break;
+				}
 				default: {
 					languageExtension = [markdown({ base: markdownLanguage, codeLanguages: languages }), html({ autoCloseTags: true })];
+					langSpecificAutocomplete.push(autocompleteEmoji);
+					langSpecificKeymap.push(markdownKeymap);
 					break;
 				}
 			}
 			const themeExtension = Array.isArray(themes[editorTheme]) ? themes[editorTheme] : themes[editorTheme] || themes['default'];
-
-			let tabSpecificAutocomplete = [];
-			let tabSpecificKeymap = [];
-			switch (tab) {
-				case 'brewStyles': break;
-				case 'brewScripts': break;
-
-				case 'brewSnippets':
-				// falls through
-				case 'brewText': {
-					tabSpecificAutocomplete.push(autocompleteEmoji);
-					tabSpecificKeymap.push(markdownKeymap);
-				}
-			}
 
 			return [
 				EditorView.lineWrapping,
@@ -191,7 +188,7 @@ const CodeEditor = forwardRef(
 				scrollPastEnd(),
 				search(),
 				history(), //allows for undo and redo
-				...tabSpecificAutocomplete,
+				...langSpecificAutocomplete,
 
 				//folding
 				foldOnPages,
@@ -209,7 +206,7 @@ const CodeEditor = forwardRef(
 				//keyboard shortcut
 				keymap.of([...defaultKeymap, foldKeymap, ...searchKeymap]),
 				generalKeymap,
-				...tabSpecificKeymap,
+				...langSpecificKeymap,
 
 				//multiple cursors and selections
 				drawSelection(),
