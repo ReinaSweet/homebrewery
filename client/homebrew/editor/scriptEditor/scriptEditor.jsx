@@ -75,6 +75,13 @@ class ScriptAPIValidator {
         return true;
     }
 
+    getSelected(...args) {
+        if (!this.#validateTypes("getSelected", args, [])) {
+            return false;
+        }
+        return true;
+    }
+
     getCSVFromFile(...args) {
         if (!this.#validateTypes("getCSVFromFile", args, ["string"], 1)) {
             return false;
@@ -195,6 +202,13 @@ class ScriptAPIWorker {
     getBetween(start, end, ...args) {
         if (this.#validator.getBetween(start, end, args)) {
             return this.#postAndExpect("getBetween", [start, end]);
+        }
+        return null;
+    }
+
+    getSelected(...args) {
+        if (this.#validator.getSelected(args)) {
+            return this.#postAndExpect("getSelected", []);
         }
         return null;
     }
@@ -391,7 +405,10 @@ const workerAPI = new ScriptAPIWorker(self, subScriptFunction);
     }
 
     getSelected() {
-        //
+        return new Promise((resolve) => {
+            const selection = this.#codeEditor?.getCursorSelection();
+            resolve(selection);
+        });
     }
     
     getCSVFromFile(message) {

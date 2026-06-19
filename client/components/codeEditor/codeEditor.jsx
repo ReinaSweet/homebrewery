@@ -376,6 +376,15 @@ const CodeEditor = forwardRef(
 				return current.substring(positions.start, positions.end);
 			},
 
+			getCursorSelection : () => {
+				const view = viewRef.current;
+				if(!view) return "";
+				if(view.state.selection.main.empty) return "";
+
+				const current = view.state.doc.toString();
+				return current.substring(view.state.selection.main.from, view.state.selection.main.to);
+			},
+
 			replaceBetween : (start, end, text) => {
 				const view = viewRef.current;
 				if(!view) return;
