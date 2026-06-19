@@ -157,7 +157,7 @@ const CodeEditor = forwardRef(
   			? syntaxHighlighting(customHighlightStyle)
   			: syntaxHighlighting(legacyCustomHighlightStyle);
 
-			var languageExtension;
+			let languageExtension;
 			switch (language) {
 				case 'css': languageExtension = css(); break;
 				case 'javascript': languageExtension = javascript(); break;
@@ -168,6 +168,20 @@ const CodeEditor = forwardRef(
 			}
 			const themeExtension = Array.isArray(themes[editorTheme]) ? themes[editorTheme] : themes[editorTheme] || themes['default'];
 
+			let tabSpecificAutocomplete = [];
+			let tabSpecificKeymap = [];
+			switch (tab) {
+				case 'brewStyles': break;
+				case 'brewScripts': break;
+
+				case 'brewSnippets':
+				// falls through
+				case 'brewText': {
+					tabSpecificAutocomplete.push(autocompleteEmoji);
+					tabSpecificKeymap.push(markdownKeymap);
+				}
+			}
+
 			return [
 				EditorView.lineWrapping,
 				setEventListeners,
@@ -177,7 +191,7 @@ const CodeEditor = forwardRef(
 				scrollPastEnd(),
 				search(),
 				history(), //allows for undo and redo
-				...(tab !== 'brewStyles' ? [autocompleteEmoji] : []),
+				...tabSpecificAutocomplete,
 
 				//folding
 				foldOnPages,
@@ -195,7 +209,7 @@ const CodeEditor = forwardRef(
 				//keyboard shortcut
 				keymap.of([...defaultKeymap, foldKeymap, ...searchKeymap]),
 				generalKeymap,
-				...(tab !== 'brewStyles' ? [markdownKeymap] : []),
+				...tabSpecificKeymap,
 
 				//multiple cursors and selections
 				drawSelection(),
