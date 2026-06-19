@@ -1,4 +1,4 @@
-import '../../brewRenderer/notificationPopup/notificationPopup.less';
+import './scriptRequestNotification.less';
 import * as React from 'react';
 import Dialog from '../../../components/dialog.jsx';
 
@@ -25,10 +25,10 @@ const ScriptRequestNotification = (props) => {
                 dismissScriptRequest();
             };
 
-	        return <Dialog className='notificationPopup' closeText='Cancel' onDismiss={dismissScriptRequest} >
-	        	<h1>{props.request.message}</h1>
-	        	<p></p>
-			    <button className='uploadFile' onClick={()=>{ document.getElementById('scriptRequestFile').click(); }}>Upload File</button>
+	        return <Dialog className='scriptRequestNotification' closeText='Cancel' onDismiss={dismissScriptRequest} >
+	        	<h1>{props.request.title}</h1>
+	        	<p>{props.request.message}</p>
+			    <button className='uploadFile' onClick={()=>{ document.getElementById('scriptRequestFile').click(); }}>Select File</button>
 				<input id='scriptRequestFile' className='newFromLocal' type='file' onChange={onFileLoad} style={{ display: 'none' }} />
 	        	<hr />
 	        	<p>If you wish to ignore this, click Cancel.</p>
@@ -41,21 +41,21 @@ const ScriptRequestNotification = (props) => {
                 dismissScriptRequest();
             };
 
-	        return <Dialog className='notificationPopup' closeText='Cancel' onDismiss={dismissScriptRequest} >
-	        	<h1>{props.request.message}</h1>
-                <p>{props.request.URL}</p>
-	        	<p></p>
-			    <button className='uploadFile' onClick={onURLCommitted}>Allow URL Read</button>
+	        return <Dialog className='scriptRequestNotification' closeText='Cancel' onDismiss={dismissScriptRequest} >
+	        	<h1>{props.request.title}</h1>
+                <p>{props.request.message}</p>
+                <small>{props.request.URL}</small>
+			    <button className='commitURL' onClick={onURLCommitted}>Allow URL Read</button>
 	        	<hr />
 	        	<p>If you wish to ignore this, click Cancel.</p>
 	        </Dialog>;
         }
 
         case "reporterror": {
-	        return <Dialog className='notificationPopup' closeText='Close' onDismiss={dismissScriptRequest} >
+	        return <Dialog className='scriptRequestError' closeText='Close' onDismiss={dismissScriptRequest} >
 	        	<h1>Script Error in: {props.request.scriptName}</h1>
                 <p>{props.request.message}</p>
-                <p>{props.request.stack}</p>
+                <code>{props.request.stack.trim()}</code>
 	        </Dialog>;
         }
 

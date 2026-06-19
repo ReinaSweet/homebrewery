@@ -18,9 +18,24 @@ class ScriptValidationError extends Error {
 class ScriptAPIValidator {
     constructor() {}
 
-    #validateTypes(fname, forwardArgs, types) {
-        if (forwardArgs.length !== types.length) {
-            throw new ScriptValidationError(`${fname} expects exactly ${types.length} arguments`);
+    #validateTypes(fname, forwardArgs, types, numOptional = 0) {
+        let undefinedArgCount = 0;
+        for (let arg of forwardArgs) {
+            if (arg === undefined) {
+                ++undefinedArgCount;
+            }
+        }
+
+        const excessArgs = forwardArgs.pop();
+        const argsLength = forwardArgs.length + (Array.isArray(excessArgs) ? excessArgs.length : 0) - undefinedArgCount;
+        if (argsLength !== types.length) {
+            if (numOptional < 1) {
+                const message = `${fname} expects exactly ${types.length} arguments, got ${argsLength} instead`;
+                throw new ScriptValidationError(message);
+            } else {
+                const message = `${fname} expects between ${types.length - numOptional} and ${types.length} arguments, got ${argsLength} instead`;
+                throw new ScriptValidationError(message);
+            }
         }
         for (let i = 0; i < forwardArgs.length; ++i) {
             if (typeof forwardArgs[i] !== types[i]) {
@@ -39,6 +54,7 @@ class ScriptAPIValidator {
             if (fname.indexOf("do") === 0 || fname.indexOf("get") === 0) {
                 if (typeof this[fname] === "function") {
                     if (Array.isArray(args)) {
+                        args.push(args.length);
                         return this[fname].apply(this, args);
                     } else {
                         return this[fname].apply(this, []);
@@ -59,10 +75,15 @@ class ScriptAPIValidator {
         return true;
     }
 
-    getCSVFromFile() { return true; }
+    getCSVFromFile(...args) {
+        if (!this.#validateTypes("getCSVFromFile", args, ["string"], 1)) {
+            return false;
+        }
+        return true;
+    }
 
     getCSVFromSheets(...args) {
-        if (!this.#validateTypes("getCSVFromSheets", args, ["string", "number"])) {
+        if (!this.#validateTypes("getCSVFromSheets", args, ["string", "number", "string"], 2)) {
             return false;
         }
 
@@ -114,7 +135,7 @@ class ScriptAPIValidator {
      * validate utility 'do' functions
      */
     doReportError(...args) {
-        if (!this.#validateTypes("doReportError", args, ["string", "string"])) {
+        if (!this.#validateTypes("doReportError", args, ["string", "string"], 1)) {
             return false;
         }
         return true;
@@ -171,20 +192,23 @@ class ScriptAPIWorker {
     /**
      * Send to main thread 'get' functions and expect a promise
      */
-    getBetween(start, end) {
-        if (this.#validator.getBetween(start, end)) {
+    getBetween(start, end, ...args) {
+        if (this.#validator.getBetween(start, end, args)) {
             return this.#postAndExpect("getBetween", [start, end]);
         }
         return null;
     }
 
-    getCSVFromFile() {
-        return this.#postAndExpect("getCSVFromFile", []);
+    getCSVFromFile(message = "", ...args) {
+        if (this.#validator.getCSVFromFile(message, args)) {
+            return this.#postAndExpect("getCSVFromFile", [message]);
+        }
+        return null;
     }
 
-    getCSVFromSheets(sheetId, gid = 0) {
-        if (this.#validator.getCSVFromSheets(sheetId, gid)) {
-            return this.#postAndExpect("getCSVFromSheets", [sheetId, gid]);
+    getCSVFromSheets(sheetId, gid = 0, message = "", ...args) {
+        if (this.#validator.getCSVFromSheets(sheetId, gid, message, args)) {
+            return this.#postAndExpect("getCSVFromSheets", [sheetId, gid, message]);
         }
         return null;
     }
@@ -192,32 +216,32 @@ class ScriptAPIWorker {
     /**
      * Send to main thread 'do' functions
      */
-    doReplaceBetween(start, end, text) {
-        if (this.#validator.doReplaceBetween(start, end, text)) {
+    doReplaceBetween(start, end, text, ...args) {
+        if (this.#validator.doReplaceBetween(start, end, text, args)) {
             this.#post("doReplaceBetween", [start, end, text]);
         }
     }
 
-    doReplaceSelected(text) {
-        if (this.#validator.doReplaceSelected(text)) {
+    doReplaceSelected(text, ...args) {
+        if (this.#validator.doReplaceSelected(text, args)) {
             this.#post("doReplaceSelected", [text]);
         }
     }
 
-    doInsertAfter(target, text) {
-        if (this.#validator.doInsertAfter(target, text)) {
+    doInsertAfter(target, text, ...args) {
+        if (this.#validator.doInsertAfter(target, text, args)) {
             this.#post("doInsertAfter", [target, text]);
         }
     }
 
-    doAppendToStart(text) {
-        if (this.#validator.doAppendToStart(text)) {
+    doAppendToStart(text, ...args) {
+        if (this.#validator.doAppendToStart(text, args)) {
             this.#post("doAppendToStart", [text]);
         }
     }
 
-    doAppendToEnd(text) {
-        if (this.#validator.doAppendToEnd(text)) {
+    doAppendToEnd(text, ...args) {
+        if (this.#validator.doAppendToEnd(text, args)) {
             this.#post("doAppendToEnd", [text]);
         }
     }
@@ -225,8 +249,8 @@ class ScriptAPIWorker {
     /**
      * Utilities, should all be 'do' or not talk at all to the ScriptAPI
      */
-    doReportError(message, stack = "") {
-        if (this.#validator.doReportError(message, stack)) {
+    doReportError(message, stack = "", ...args) {
+        if (this.#validator.doReportError(message, stack, args)) {
             return this.#post("doReportError", [message, stack]);
         }
         return null;
@@ -370,11 +394,12 @@ const workerAPI = new ScriptAPIWorker(self, subScriptFunction);
         //
     }
     
-    getCSVFromFile() {
+    getCSVFromFile(message) {
         return new Promise((resolve) => {
             this.#editor?.updateScriptRequest({
                 type: "uploadfile",
-                message: "Upload a CSV",
+                title: "Script Request: Upload CSV from File",
+                message: message,
                 callback: (e) => {
                     const fileContent = e.target.result;
                     const { readString } = usePapaParse();
@@ -390,12 +415,13 @@ const workerAPI = new ScriptAPIWorker(self, subScriptFunction);
         });
     }
 
-    getCSVFromSheets(sheetId, gid) {
+    getCSVFromSheets(sheetId, gid, message) {
         return new Promise((resolve) => {
             const URL = `https://docs.google.com/spreadsheets/d/e/${sheetId}/pub?gid=${gid}&single=true&output=csv`;
             this.#editor?.updateScriptRequest({
                 type: "readurl",
-                message: "Read sheets CSV from URL:",
+                title: "Script Request: Read CSV from URL",
+                message: message,
                 URL: URL,
                 callback: () => {
                     const { readRemoteFile } = usePapaParse();

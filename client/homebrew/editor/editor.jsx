@@ -171,6 +171,8 @@ const Editor = createReactClass({
 	handleViewChange : function(newView){
 		this.props.setMoveArrows(newView === 'text');
 
+		this.updateScriptRequest(null);
+
 		this.setState({
 			view : newView
 		}, ()=>{
@@ -379,7 +381,10 @@ const Editor = createReactClass({
 					updateBrew={this.props.updateBrew}
 				/>
 
-				<ScriptRequestNotification request={this.state.scriptRequest} updateScriptRequest={this.updateScriptRequest} />
+				<ScriptRequestNotification 
+					request={this.state.scriptRequest}
+					updateScriptRequest={this.updateScriptRequest}
+				/>
 
 				{this.renderEditor()}
 			</div>
