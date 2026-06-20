@@ -3,6 +3,9 @@ import { usePapaParse } from 'react-papaparse';
 const SUBSCRIPT_FUNCTION_NAME = "subScriptFunction";
 const ERROR_REPORT_TOPLEVEL_NAME = "Scripts";
 
+const TIMEOUT_SCRIPT_REQUESTS = 60000;
+const TIMEOUT_ALL_FUNCTIONALITY = TIMEOUT_SCRIPT_REQUESTS + 10000;
+
 class ScriptValidationError extends Error {
     constructor(message) {
         super(message);
@@ -326,14 +329,13 @@ class ScriptAPI {
     #linesStart = 0;
     #scriptBlobURL = "";
     #linesEnd = 0;
+    #nonPersistScriptRequestEnabled = true;
 
     #codeEditor;
     #editor;
     #worker;
 
     #validator = new ScriptAPIValidator();
-    #pauseStandardTimeoutCount = 0;
-    #unpauseStandardTimeoutCount = 0;
 
     constructor(codeEditor, editor) {
         this.#codeEditor = codeEditor;
@@ -367,6 +369,8 @@ ${SUBSCRIPT_FUNCTION_NAME} = null;
 workerAPI.start();
 })();
 `;
+        const self = this;
+
         try {
             const blob = new Blob([blobText], {type: 'application/javascript'});
             this.#scriptBlobURL = URL.createObjectURL(blob);
@@ -375,18 +379,24 @@ workerAPI.start();
                 name: this.#scriptName
             });
 
-            const scriptAPIself = this;
             this.#worker.addEventListener("message", (event) => {
-                scriptAPIself.onWorkerMessage(event);
+                self.onWorkerMessage(event);
             });
             this.#worker.addEventListener("error", (event) => {
-                scriptAPIself.onWorkerError(event);
+                self.onWorkerError(event);
             });
             this.#worker.postMessage({ fname: "start" });
-            this.terminateAfterTimeout();
         } catch (error) {
             this.doReportError(error.message, error.stack);
         }
+
+        setTimeout(() => {
+            self.suppressAllNonPersistentScriptRequests();
+        }, TIMEOUT_SCRIPT_REQUESTS);
+
+        setTimeout(() => {
+            self.terminateWorker();
+        }, TIMEOUT_ALL_FUNCTIONALITY);
     }
 
     onWorkerMessage(event) {
@@ -396,12 +406,9 @@ workerAPI.start();
             
             } else if (event.data.fname.indexOf("get") === 0) {
                 const promise = this[event.data.fname].apply(this, event.data.args);
-                const scriptAPIself = this;
                 const worker = this.#worker;
 
-                this.#pauseStandardTimeoutCount += 1;
                 promise.then((data) => {
-                    scriptAPIself.#unpauseStandardTimeoutCount += 1;
                     worker.postMessage({
                         fname: "r:" + event.data.fname,
                         data: data
@@ -425,31 +432,28 @@ workerAPI.start();
             message: event.message,
             stack: stack,
             scriptName: this.#scriptName,
-            persistAcrossTabs: true
+            persist: true
         });
     }
 
-    terminateAfterTimeout() {
-        let scriptAPIself = this;
-        setTimeout(() => {
-            scriptAPIself.terminateWorkerIfUnpausedOrTimeout();
-        }, 2000);
+    suppressAllNonPersistentScriptRequests() {
+        if (this.#nonPersistScriptRequestEnabled) {
+            this.#nonPersistScriptRequestEnabled = false;
+            this.#editor?.timeoutScriptRequest();
+        }
     }
 
     terminateWorker() {
         if (this.#worker) {
+            this.suppressAllNonPersistentScriptRequests();
             this.#worker.terminate();
             this.#worker = null;
         }
     }
 
-    terminateWorkerIfUnpausedOrTimeout() {
-        if (this.#pauseStandardTimeoutCount > 0) {
-            this.#pauseStandardTimeoutCount -= this.#unpauseStandardTimeoutCount;
-            this.#unpauseStandardTimeoutCount = 0;
-            this.terminateAfterTimeout();
-        } else {
-            this.terminateWorker();
+    #updateScriptRequest(request) {
+        if (request && (request.persist || this.#nonPersistScriptRequestEnabled)) {
+            this.#editor?.updateScriptRequest(request);
         }
     }
 
@@ -473,7 +477,7 @@ workerAPI.start();
     
     getCSVFromFile(message) {
         return new Promise((resolve) => {
-            this.#editor?.updateScriptRequest({
+            this.#updateScriptRequest({
                 type: "uploadfile",
                 title: "Script Request: Upload CSV from File",
                 message: message,
@@ -495,7 +499,7 @@ workerAPI.start();
     getCSVFromSheets(sheetId, gid, message) {
         return new Promise((resolve) => {
             const URL = `https://docs.google.com/spreadsheets/d/e/${sheetId}/pub?gid=${gid}&single=true&output=csv`;
-            this.#editor?.updateScriptRequest({
+            this.#updateScriptRequest({
                 type: "readurl",
                 title: "Script Request: Read CSV from URL",
                 message: message,
@@ -578,12 +582,12 @@ workerAPI.start();
         }
 
         const newStack = targetStackLines.join('\n');
-        this.#editor?.updateScriptRequest({
+        this.#updateScriptRequest({
             type: "reporterror",
             message: message,
             stack: newStack,
             scriptName: this.#scriptName,
-            persistAcrossTabs: true
+            persist: true
         });
     }
 }

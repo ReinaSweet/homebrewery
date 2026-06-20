@@ -170,10 +170,7 @@ const Editor = createReactClass({
 
 	handleViewChange : function(newView){
 		this.props.setMoveArrows(newView === 'text');
-
-		if (this.state.scriptRequest && !this.state.scriptRequest.persistAcrossTabs) {
-			this.updateScriptRequest(null);
-		}
+		this.timeoutScriptRequest();
 
 		this.setState({
 			view : newView
@@ -252,6 +249,14 @@ const Editor = createReactClass({
 	updateScriptRequest : function(newRequest){
 		this.setState({
 			scriptRequest : newRequest
+		});
+	},
+
+	timeoutScriptRequest : function(){
+		if (this.state.scriptRequest && this.state.scriptRequest.persist) return;
+		
+		this.setState({
+			scriptRequest : null
 		});
 	},
 

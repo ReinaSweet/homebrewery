@@ -11,6 +11,16 @@ const ScriptRequestNotification = (props) => {
         }
     };
 
+    let reminder = (<reminder></reminder>);
+    if (!props.request.persist) {
+        reminder = (
+            <reminder>
+	        	<hr />
+	        	<p>If you wish to dismiss this: wait, change tabs, or click Cancel.</p>
+            </reminder>
+        );
+    }
+
     switch (props.request.type) {
         case "uploadfile": {
             const onFileLoad = (e) => {
@@ -31,15 +41,14 @@ const ScriptRequestNotification = (props) => {
 	        	<p>{props.request.message}</p>
 			    <button className='uploadFile' onClick={()=>{ document.getElementById('scriptRequestFile').click(); }}>Select File</button>
 				<input id='scriptRequestFile' className='newFromLocal' type='file' onChange={onFileLoad} style={{ display: 'none' }} />
-	        	<hr />
-	        	<p>If you wish to ignore this, click Cancel.</p>
+	        	{reminder}
 	        </Dialog>;
         }
         
         case "readurl": {
             const onURLCommitted = () => {
                 dismissScriptRequest();
-                
+
                 props.request.callback();
             };
 
@@ -48,8 +57,7 @@ const ScriptRequestNotification = (props) => {
                 <p>{props.request.message}</p>
                 <small>{props.request.URL}</small>
 			    <button className='commitURL' onClick={onURLCommitted}>Allow URL Read</button>
-	        	<hr />
-	        	<p>If you wish to ignore this, click Cancel.</p>
+	        	{reminder}
 	        </Dialog>;
         }
 
@@ -58,6 +66,7 @@ const ScriptRequestNotification = (props) => {
 	        	<h1>Script Error in: {props.request.scriptName}</h1>
                 <p>{props.request.message}</p>
                 <code>{props.request.stack.trim()}</code>
+	        	{reminder}
 	        </Dialog>;
         }
 
