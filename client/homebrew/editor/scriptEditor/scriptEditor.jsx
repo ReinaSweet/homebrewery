@@ -353,7 +353,7 @@ class ScriptAPI {
         // Start the subscript specifically on line 2
         // This lines up the Editor gutter line numbers with anything that errors or console logs
         const blobText = `'use strict';
-let ${SUBSCRIPT_FUNCTION_NAME} = (api)=>{${subScript.gen}
+let ${SUBSCRIPT_FUNCTION_NAME} = (api)=>{const self = null; ${subScript.gen}
 };
 
 (()=>{
