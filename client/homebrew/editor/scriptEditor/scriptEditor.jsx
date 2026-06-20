@@ -178,7 +178,7 @@ class ScriptAPIDeferrable {
     }
 
     resolve(data) {
-        if (this.#resolved) { throw new Error("Attempting to resolve thenable multiple times"); }
+        if (this.#resolved) { throw new Error("ScriptAPIDeferrable can't resolve multiple times"); }
         this.#resolved = true;
         this.#data = data;
         for (let callback of this.#callbacks) {
