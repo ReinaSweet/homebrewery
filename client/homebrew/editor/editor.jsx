@@ -171,7 +171,9 @@ const Editor = createReactClass({
 	handleViewChange : function(newView){
 		this.props.setMoveArrows(newView === 'text');
 
-		this.updateScriptRequest(null);
+		if (this.state.scriptRequest && !this.state.scriptRequest.persistAcrossTabs) {
+			this.updateScriptRequest(null);
+		}
 
 		this.setState({
 			view : newView

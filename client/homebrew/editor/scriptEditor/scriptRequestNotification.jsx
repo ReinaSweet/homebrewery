@@ -14,6 +14,8 @@ const ScriptRequestNotification = (props) => {
     switch (props.request.type) {
         case "uploadfile": {
             const onFileLoad = (e) => {
+                dismissScriptRequest();
+
                 const file = e.target.files[0];
                 if (!file) return;
             
@@ -22,7 +24,6 @@ const ScriptRequestNotification = (props) => {
                     props.request.callback(e);
                 };
                 reader.readAsText(file);
-                dismissScriptRequest();
             };
 
 	        return <Dialog className='scriptRequestNotification' closeText='Cancel' onDismiss={dismissScriptRequest} >
@@ -37,8 +38,9 @@ const ScriptRequestNotification = (props) => {
         
         case "readurl": {
             const onURLCommitted = () => {
-                props.request.callback();
                 dismissScriptRequest();
+                
+                props.request.callback();
             };
 
 	        return <Dialog className='scriptRequestNotification' closeText='Cancel' onDismiss={dismissScriptRequest} >

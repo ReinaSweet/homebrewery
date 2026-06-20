@@ -109,7 +109,8 @@ const brewScriptsToJSON = (menuTitle, userBrewScripts, isClientSide = false) => 
 
 					if (isClientSide) {
 						subScript.isScript = true;
-						subScript.lineNumber = accumulatedLines;
+						subScript.linesStart = accumulatedLines;
+						subScript.linesEnd = accumulatedLines + scriptLines.length + 1;
 					}
 
 					scriptsArray.push(subScript);

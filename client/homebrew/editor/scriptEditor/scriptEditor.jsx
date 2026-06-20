@@ -5,13 +5,6 @@ class ScriptValidationError extends Error {
         super(message);
         this.name = this.constructor.name;
         this.message = message;
-
-        if (this.stack) {
-            let seekRemoveToIndex = this.stack.indexOf("at ScriptAPIWorker");
-            seekRemoveToIndex = this.stack.indexOf(")", seekRemoveToIndex);
-            seekRemoveToIndex = this.stack.indexOf("at subScriptFunction", seekRemoveToIndex);
-            this.stack = this.stack.substring(seekRemoveToIndex);
-        }
     }
 }
 
@@ -149,6 +142,52 @@ class ScriptAPIValidator {
     }
 };
 
+class ScriptAPIDeferrable {
+    #worker;
+    #promise;
+    #resolved = false;
+    #callbacks = [];
+    #data = null;
+
+    constructor(worker, resolver) {
+        this.#worker = worker;
+        const self = this;
+
+        this.#promise = new Promise(resolver).catch((error) => {
+            worker.doReportError(error.message, error.stack);
+        }).then((data) => {
+            self.resolve(data);
+        });
+    }
+
+    #singlecall(callback) {
+        try {
+            callback(this.#data);
+        } catch (error) {
+            this.#worker.doReportError(error.message, error.stack);
+        }
+    }
+    
+    then(callback) {
+        if (this.#resolved) {
+            this.#singlecall(callback);
+        } else {
+            this.#callbacks.push(callback);
+        }
+        return this;
+    }
+
+    resolve(data) {
+        if (this.#resolved) { throw new Error("Attempting to resolve thenable multiple times"); }
+        this.#resolved = true;
+        this.#data = data;
+        for (let callback of this.#callbacks) {
+            this.#singlecall(callback);
+        }
+        this.#callbacks = [];
+    }
+}
+
 class ScriptAPIWorker {
     #context;
     #validator = new ScriptAPIValidator();
@@ -163,8 +202,7 @@ class ScriptAPIWorker {
                 try {
                     subScriptFunction(self);
                 } catch (error) {
-                    const stack = error.stack.substring(0, error.stack.lastIndexOf(" at listenForStart"));
-                    self.doReportError(error.message, stack);
+                    self.doReportError(error.message, error.stack);
                 }
             }
         };
@@ -180,8 +218,8 @@ class ScriptAPIWorker {
     }
 
     #postAndExpect(name, forwardArgs) {
-        let context = this.#context;
-        return new Promise((resolve) => {
+        const context = this.#context;
+        return new ScriptAPIDeferrable(this, (resolve) => {
             const responseHandler = (event) => {
                 if (event.data.fname === ("r:" + name)) {
                     context.removeEventListener("message", responseHandler);
@@ -273,8 +311,9 @@ class ScriptAPIWorker {
 
 class ScriptAPI {
     #scriptName = "";
-    #scriptLineNumber = 0;
+    #linesStart = 0;
     #scriptBlobURL = "";
+    #linesEnd = 0;
 
     #codeEditor;
     #editor;
@@ -296,7 +335,8 @@ class ScriptAPI {
         this.terminateWorker();
 
         this.#scriptName = subScript.name;
-        this.#scriptLineNumber = subScript.lineNumber;
+        this.#linesStart = subScript.linesStart;
+        this.#linesEnd = subScript.linesEnd;
 
         // Start the subscript specifically on line 2
         // This lines up the Editor gutter line numbers with anything that errors or console logs
@@ -306,7 +346,9 @@ const subScriptFunction = (api)=>{${subScript.gen}
 
 ${ScriptValidationError.toString()};
 ${ScriptAPIValidator.toString()};
+${ScriptAPIDeferrable.toString()};
 ${ScriptAPIWorker.toString()};
+
 const workerAPI = new ScriptAPIWorker(self, subScriptFunction);
 `;
         try {
@@ -358,14 +400,16 @@ const workerAPI = new ScriptAPIWorker(self, subScriptFunction);
 
         // This should be SyntaxErrors, since we catch execution errors in a different path
         // Worker SyntaxErrors don't have a stack, so, we have to manually format it
-        const adjustedLineNumber = event.lineno + this.#scriptLineNumber;
-        const stack = `${this.#scriptName}:${adjustedLineNumber}:${event.colno}`;
+        const adjustedLineNumber = event.lineno + this.#linesStart;
+        const stack = `${event.message}
+    at ${this.#scriptName}:${adjustedLineNumber}:${event.colno}`;
 
         this.#editor?.updateScriptRequest({
             type: "reporterror",
             message: event.message,
             stack: stack,
-            scriptName: this.#scriptName
+            scriptName: this.#scriptName,
+            persistAcrossTabs: true
         });
     }
 
@@ -486,12 +530,34 @@ const workerAPI = new ScriptAPIWorker(self, subScriptFunction);
      * None should do any actual modifications
      */
     doReportError(message, stack) {
-        stack = stack.replaceAll(this.#scriptBlobURL, this.#scriptName);
+        // We do a lot of filtering to make this more usable to non-technical users,
+        // So give an unfiltered error to technical users in the console
+        console.error(stack);
+
+        const stackLineRegex = /^(?<desc>\s+at .+):(?<lineno>\d+):(?<colno>\d+)(?<end>\)?)$/;
+        const sourceStackLines = stack.split('\n');
+
+        let targetStackLines = [sourceStackLines.shift()];
+        for (const line of sourceStackLines) {
+            const lineMatch = line.match(stackLineRegex);
+            if (lineMatch) {
+                const adjustedLineno = parseInt(lineMatch.groups.lineno) + this.#linesStart;
+                // Only include lines that would be part of the user written script
+                if (adjustedLineno < this.#linesEnd) {
+                    const adjustedDesc = lineMatch.groups.desc.replaceAll(this.#scriptBlobURL, this.#scriptName);
+                    const newStackLine = `${adjustedDesc}:${adjustedLineno}:${lineMatch.groups.colno}${lineMatch.groups.end}`;
+                    targetStackLines.push(newStackLine);
+                }
+            }
+        }
+
+        const newStack = targetStackLines.join('\n');
         this.#editor?.updateScriptRequest({
             type: "reporterror",
             message: message,
-            stack: stack,
-            scriptName: this.#scriptName
+            stack: newStack,
+            scriptName: this.#scriptName,
+            persistAcrossTabs: true
         });
     }
 }
