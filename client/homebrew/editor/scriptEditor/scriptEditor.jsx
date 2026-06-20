@@ -1,5 +1,8 @@
 import { usePapaParse } from 'react-papaparse';
 
+const SUBSCRIPT_FUNCTION_NAME = "subScriptFunction";
+const ERROR_REPORT_TOPLEVEL_NAME = "Scripts";
+
 class ScriptValidationError extends Error {
     constructor(message) {
         super(message);
@@ -350,7 +353,7 @@ class ScriptAPI {
         // Start the subscript specifically on line 2
         // This lines up the Editor gutter line numbers with anything that errors or console logs
         const blobText = `'use strict';
-let subScriptFunction = (api)=>{${subScript.gen}
+let ${SUBSCRIPT_FUNCTION_NAME} = (api)=>{${subScript.gen}
 };
 
 (()=>{
@@ -359,8 +362,8 @@ ${ScriptAPIValidator.toString()};
 ${ScriptAPIDeferrable.toString()};
 ${ScriptAPIWorker.toString()};
 
-const workerAPI = new ScriptAPIWorker(self, subScriptFunction);
-subScriptFunction = null;
+const workerAPI = new ScriptAPIWorker(self, ${SUBSCRIPT_FUNCTION_NAME});
+${SUBSCRIPT_FUNCTION_NAME} = null;
 workerAPI.start();
 })();
 `;
@@ -415,7 +418,7 @@ workerAPI.start();
         // Worker SyntaxErrors don't have a stack, so, we have to manually format it
         const adjustedLineNumber = event.lineno + this.#linesStart;
         const stack = `${event.message}
-    at ${this.#scriptName}:${adjustedLineNumber}:${event.colno}`;
+    at ${ERROR_REPORT_TOPLEVEL_NAME} (${this.#scriptName}:${adjustedLineNumber}:${event.colno})`;
 
         this.#editor?.updateScriptRequest({
             type: "reporterror",
@@ -547,18 +550,28 @@ workerAPI.start();
         // So give an unfiltered error to technical users in the console
         console.error(stack);
 
-        const stackLineRegex = /^(?<desc>\s+at .+):(?<lineno>\d+):(?<colno>\d+)(?<end>\)?)$/;
+        const stackLineRegex = /^(?<pre>\s+at )(?<context>[^\(]+) \((?<desc>.+):(?<lineno>\d+):(?<colno>\d+)\)$/;
+        const stackLineNoContextRegex = /^(?<pre>\s+at )(?<desc>.+):(?<lineno>\d+):(?<colno>\d+)$/;
         const sourceStackLines = stack.split('\n');
 
         let targetStackLines = [sourceStackLines.shift()];
         for (const line of sourceStackLines) {
-            const lineMatch = line.match(stackLineRegex);
+            let lineMatch = line.match(stackLineRegex);
+            let scriptContext;
+            if (lineMatch) {
+                scriptContext = lineMatch.groups.context;
+            } else {
+                lineMatch = line.match(stackLineNoContextRegex);
+                scriptContext = ERROR_REPORT_TOPLEVEL_NAME;
+            }
             if (lineMatch) {
                 const adjustedLineno = parseInt(lineMatch.groups.lineno) + this.#linesStart;
                 // Only include lines that would be part of the user written script
                 if (adjustedLineno <= this.#linesEnd) {
                     const adjustedDesc = lineMatch.groups.desc.replaceAll(this.#scriptBlobURL, this.#scriptName);
-                    const newStackLine = `${adjustedDesc}:${adjustedLineno}:${lineMatch.groups.colno}${lineMatch.groups.end}`;
+                    scriptContext = scriptContext.replaceAll(`ScriptAPIWorker.${SUBSCRIPT_FUNCTION_NAME}`, ERROR_REPORT_TOPLEVEL_NAME);
+
+                    const newStackLine = `${lineMatch.groups.pre}${scriptContext} (${adjustedDesc}:${adjustedLineno}:${lineMatch.groups.colno})`;
                     targetStackLines.push(newStackLine);
                 }
             }
