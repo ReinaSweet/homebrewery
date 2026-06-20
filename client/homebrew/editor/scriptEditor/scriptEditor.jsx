@@ -190,17 +190,26 @@ class ScriptAPIDeferrable {
 
 class ScriptAPIWorker {
     #context;
+    #subScriptFunction;
     #validator = new ScriptAPIValidator();
+    #started = false;
 
     constructor(context, subScriptFunction) {
         this.#context = context;
-        
+        this.#subScriptFunction = subScriptFunction;
+    }
+
+    start() {
+        if (this.#started) return;
+        this.#started = true;
+
+        const context = this.#context;
         const self = this;
         const listenForStart = (event) => {
             if (event.data.fname === "start") {
                 context.removeEventListener("message", listenForStart);
                 try {
-                    subScriptFunction(self);
+                    this.#subScriptFunction(self);
                 } catch (error) {
                     self.doReportError(error.message, error.stack);
                 }
@@ -341,15 +350,19 @@ class ScriptAPI {
         // Start the subscript specifically on line 2
         // This lines up the Editor gutter line numbers with anything that errors or console logs
         const blobText = `'use strict';
-const subScriptFunction = (api)=>{${subScript.gen}
+let subScriptFunction = (api)=>{${subScript.gen}
 };
 
+(()=>{
 ${ScriptValidationError.toString()};
 ${ScriptAPIValidator.toString()};
 ${ScriptAPIDeferrable.toString()};
 ${ScriptAPIWorker.toString()};
 
 const workerAPI = new ScriptAPIWorker(self, subScriptFunction);
+subScriptFunction = null;
+workerAPI.start();
+})();
 `;
         try {
             const blob = new Blob([blobText], {type: 'application/javascript'});
@@ -543,7 +556,7 @@ const workerAPI = new ScriptAPIWorker(self, subScriptFunction);
             if (lineMatch) {
                 const adjustedLineno = parseInt(lineMatch.groups.lineno) + this.#linesStart;
                 // Only include lines that would be part of the user written script
-                if (adjustedLineno < this.#linesEnd) {
+                if (adjustedLineno <= this.#linesEnd) {
                     const adjustedDesc = lineMatch.groups.desc.replaceAll(this.#scriptBlobURL, this.#scriptName);
                     const newStackLine = `${adjustedDesc}:${adjustedLineno}:${lineMatch.groups.colno}${lineMatch.groups.end}`;
                     targetStackLines.push(newStackLine);
