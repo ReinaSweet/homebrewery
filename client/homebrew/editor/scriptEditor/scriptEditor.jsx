@@ -18,8 +18,8 @@ class ScriptAPIValidator {
     constructor() {}
 
     #validateTypes(fname, forwardArgs, types, numOptional = 0) {
-        let undefinedArgCount = 0;
-        for (let arg of forwardArgs) {
+        const undefinedArgCount = 0;
+        for (const arg of forwardArgs) {
             if (arg === undefined) {
                 ++undefinedArgCount;
             }
@@ -38,8 +38,8 @@ class ScriptAPIValidator {
         }
         for (let i = 0; i < forwardArgs.length; ++i) {
             if (typeof forwardArgs[i] !== types[i]) {
-                let argTypes = [];
-                for (let arg of forwardArgs) {
+                const argTypes = [];
+                for (const arg of forwardArgs) {
                     argTypes.push(typeof arg);
                 }
                 throw new ScriptValidationError(`${fname} expects types ${types.toString()}, got ${argTypes} instead`);
@@ -187,7 +187,7 @@ class ScriptAPIDeferrable {
         if (this.#resolved) { throw new Error("ScriptAPIDeferrable can't resolve multiple times"); }
         this.#resolved = true;
         this.#data = data;
-        for (let callback of this.#callbacks) {
+        for (const callback of this.#callbacks) {
             this.#singlecall(callback);
         }
         this.#callbacks = [];
@@ -558,7 +558,7 @@ workerAPI.start();
         const stackLineNoContextRegex = /^(?<pre>\s+at )(?<desc>.+):(?<lineno>\d+):(?<colno>\d+)$/;
         const sourceStackLines = stack.split('\n');
 
-        let targetStackLines = [sourceStackLines.shift()];
+        const targetStackLines = [sourceStackLines.shift()];
         for (const line of sourceStackLines) {
             let lineMatch = line.match(stackLineRegex);
             let scriptContext;

@@ -11,13 +11,13 @@ const ScriptRequestNotification = (props) => {
         }
     };
 
-    let reminder = (<reminder></reminder>);
+    let reminder = (<section></section>);
     if (!props.request.persist) {
         reminder = (
-            <reminder>
+            <section className='reminder'>
 	        	<hr />
 	        	<p>If you wish to dismiss this: wait, change tabs, or click Cancel.</p>
-            </reminder>
+            </section>
         );
     }
 
