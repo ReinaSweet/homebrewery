@@ -18,7 +18,7 @@ class ScriptAPIValidator {
     constructor() {}
 
     #validateTypes(fname, forwardArgs, types, numOptional = 0) {
-        const undefinedArgCount = 0;
+        let undefinedArgCount = 0;
         for (const arg of forwardArgs) {
             if (arg === undefined) {
                 ++undefinedArgCount;
