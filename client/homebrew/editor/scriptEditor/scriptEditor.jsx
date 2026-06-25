@@ -1,345 +1,27 @@
 import { usePapaParse } from 'react-papaparse';
+import { ScriptAPIValidator, SUBSCRIPT_FUNCTION_NAME } from '@shared/scriptWorker.js'
 
-const SUBSCRIPT_FUNCTION_NAME = "subScriptFunction";
 const ERROR_REPORT_TOPLEVEL_NAME = "Scripts";
-
 const TIMEOUT_SCRIPT_REQUESTS = 60000;
 const TIMEOUT_ALL_FUNCTIONALITY = TIMEOUT_SCRIPT_REQUESTS + 10000;
-
-class ScriptValidationError extends Error {
-    constructor(message) {
-        super(message);
-        this.name = this.constructor.name;
-        this.message = message;
-    }
-}
-
-class ScriptAPIValidator {
-    constructor() {}
-
-    #validateTypes(fname, forwardArgs, types, numOptional = 0) {
-        let undefinedArgCount = 0;
-        for (const arg of forwardArgs) {
-            if (arg === undefined) {
-                ++undefinedArgCount;
-            }
-        }
-
-        const excessArgs = forwardArgs.pop();
-        const argsLength = forwardArgs.length + (Array.isArray(excessArgs) ? excessArgs.length : 0) - undefinedArgCount;
-        if (argsLength !== types.length) {
-            if (numOptional < 1) {
-                const message = `${fname} expects exactly ${types.length} arguments, got ${argsLength} instead`;
-                throw new ScriptValidationError(message);
-            } else {
-                const message = `${fname} expects between ${types.length - numOptional} and ${types.length} arguments, got ${argsLength} instead`;
-                throw new ScriptValidationError(message);
-            }
-        }
-        for (let i = 0; i < forwardArgs.length; ++i) {
-            if (typeof forwardArgs[i] !== types[i]) {
-                const argTypes = [];
-                for (const arg of forwardArgs) {
-                    argTypes.push(typeof arg);
-                }
-                throw new ScriptValidationError(`${fname} expects types ${types.toString()}, got ${argTypes} instead`);
-            }
-        }
-        return true;
-    }
-
-    validateUntrustedFunction(fname, args) {
-        if (typeof fname === "string") {
-            if (fname.indexOf("do") === 0 || fname.indexOf("get") === 0) {
-                if (typeof this[fname] === "function") {
-                    if (Array.isArray(args)) {
-                        args.push(args.length);
-                        return this[fname].apply(this, args);
-                    } else {
-                        return this[fname].apply(this, []);
-                    }
-                }
-            }
-        }
-        return false;
-    }
-
-    /**
-     * validate 'get' functions
-     */
-    getBetween(...args) {
-        if (!this.#validateTypes("getBetween", args, ["string", "string"])) {
-            return false;
-        }
-        return true;
-    }
-
-    getSelected(...args) {
-        if (!this.#validateTypes("getSelected", args, [])) {
-            return false;
-        }
-        return true;
-    }
-
-    getCSVFromFile(...args) {
-        if (!this.#validateTypes("getCSVFromFile", args, ["string"], 1)) {
-            return false;
-        }
-        return true;
-    }
-
-    getCSVFromSheets(...args) {
-        if (!this.#validateTypes("getCSVFromSheets", args, ["string", "number", "string"], 2)) {
-            return false;
-        }
-
-        if (args[0].match(/[^\-a-z0-9_]/i)) {
-            throw new ScriptValidationError(`getCSVFromSheets URL is ill-formed`);
-        }
-        return true;
-    }
-
-    /**
-     * validate 'do' functions
-     */
-    doReplaceBetween(...args) {
-        if (!this.#validateTypes("doReplaceBetween", args, ["string", "string", "string"])) {
-            return false;
-        }
-        return true;
-    }
-
-    doReplaceSelected(...args) {
-        if (!this.#validateTypes("doReplaceSelected", args, ["string"])) {
-            return false;
-        }
-        return true;
-    }
-
-    doInsertAfter(...args) {
-        if (!this.#validateTypes("doInsertAfter", args, ["string", "string"])) {
-            return false;
-        }
-        return true;
-    }
-
-    doAppendToStart(...args) {
-        if (!this.#validateTypes("doAppendToStart", args, ["string"])) {
-            return false;
-        }
-        return true;
-    }
-
-    doAppendToEnd(...args) {
-        if (!this.#validateTypes("doAppendToEnd", args, ["string"])) {
-            return false;
-        }
-        return true;
-    }
-
-    /**
-     * validate utility 'do' functions
-     */
-    doReportError(...args) {
-        if (!this.#validateTypes("doReportError", args, ["string", "string"], 1)) {
-            return false;
-        }
-        return true;
-    }
-};
-
-class ScriptAPIDeferrable {
-    #worker;
-    #promise;
-    #resolved = false;
-    #callbacks = [];
-    #data = null;
-
-    constructor(worker, resolver) {
-        this.#worker = worker;
-        const self = this;
-
-        this.#promise = new Promise(resolver).catch((error) => {
-            worker.doReportError(error.message, error.stack);
-        }).then((data) => {
-            self.resolve(data);
-        });
-    }
-
-    #singlecall(callback) {
-        try {
-            callback(this.#data);
-        } catch (error) {
-            this.#worker.doReportError(error.message, error.stack);
-        }
-    }
-    
-    then(callback) {
-        if (this.#resolved) {
-            this.#singlecall(callback);
-        } else {
-            this.#callbacks.push(callback);
-        }
-        return this;
-    }
-
-    resolve(data) {
-        if (this.#resolved) { throw new Error("ScriptAPIDeferrable can't resolve multiple times"); }
-        this.#resolved = true;
-        this.#data = data;
-        for (const callback of this.#callbacks) {
-            this.#singlecall(callback);
-        }
-        this.#callbacks = [];
-    }
-}
-
-class ScriptAPIWorker {
-    #context;
-    #subScriptFunction;
-    #validator = new ScriptAPIValidator();
-    #started = false;
-
-    constructor(context, subScriptFunction) {
-        this.#context = context;
-        this.#subScriptFunction = subScriptFunction;
-    }
-
-    start() {
-        if (this.#started) return;
-        this.#started = true;
-
-        const context = this.#context;
-        const self = this;
-        const listenForStart = (event) => {
-            if (event.data.fname === "start") {
-                context.removeEventListener("message", listenForStart);
-                try {
-                    this.#subScriptFunction(self);
-                } catch (error) {
-                    self.doReportError(error.message, error.stack);
-                }
-            }
-        };
-
-        this.#context.addEventListener("message", listenForStart);
-    }
-
-    #post(name, forwardArgs) {
-        this.#context.postMessage({
-            fname: name,
-            args: forwardArgs
-        });
-    }
-
-    #postAndExpect(name, forwardArgs) {
-        const context = this.#context;
-        return new ScriptAPIDeferrable(this, (resolve) => {
-            const responseHandler = (event) => {
-                if (event.data.fname === ("r:" + name)) {
-                    context.removeEventListener("message", responseHandler);
-                    resolve(event.data.data);
-                }
-            };
-            context.addEventListener("message", responseHandler);
-            context.postMessage({
-                fname: name,
-                args: forwardArgs
-            });
-        });
-    }
-
-    /**
-     * Send to main thread 'get' functions and expect a promise
-     */
-    getBetween(start, end, ...args) {
-        if (this.#validator.getBetween(start, end, args)) {
-            return this.#postAndExpect("getBetween", [start, end]);
-        }
-        return null;
-    }
-
-    getSelected(...args) {
-        if (this.#validator.getSelected(args)) {
-            return this.#postAndExpect("getSelected", []);
-        }
-        return null;
-    }
-
-    getCSVFromFile(message = "", ...args) {
-        if (this.#validator.getCSVFromFile(message, args)) {
-            return this.#postAndExpect("getCSVFromFile", [message]);
-        }
-        return null;
-    }
-
-    getCSVFromSheets(sheetId, gid = 0, message = "", ...args) {
-        if (this.#validator.getCSVFromSheets(sheetId, gid, message, args)) {
-            return this.#postAndExpect("getCSVFromSheets", [sheetId, gid, message]);
-        }
-        return null;
-    }
-
-    /**
-     * Send to main thread 'do' functions
-     */
-    doReplaceBetween(start, end, text, ...args) {
-        if (this.#validator.doReplaceBetween(start, end, text, args)) {
-            this.#post("doReplaceBetween", [start, end, text]);
-        }
-    }
-
-    doReplaceSelected(text, ...args) {
-        if (this.#validator.doReplaceSelected(text, args)) {
-            this.#post("doReplaceSelected", [text]);
-        }
-    }
-
-    doInsertAfter(target, text, ...args) {
-        if (this.#validator.doInsertAfter(target, text, args)) {
-            this.#post("doInsertAfter", [target, text]);
-        }
-    }
-
-    doAppendToStart(text, ...args) {
-        if (this.#validator.doAppendToStart(text, args)) {
-            this.#post("doAppendToStart", [text]);
-        }
-    }
-
-    doAppendToEnd(text, ...args) {
-        if (this.#validator.doAppendToEnd(text, args)) {
-            this.#post("doAppendToEnd", [text]);
-        }
-    }
-
-    /**
-     * Utilities, should all be 'do' or not talk at all to the ScriptAPI
-     */
-    doReportError(message, stack = "", ...args) {
-        if (this.#validator.doReportError(message, stack, args)) {
-            return this.#post("doReportError", [message, stack]);
-        }
-        return null;
-    }
-};
 
 class ScriptAPI {
     #scriptName = "";
     #linesStart = 0;
-    #scriptBlobURL = "";
     #linesEnd = 0;
     #nonPersistScriptRequestEnabled = true;
 
     #codeEditor;
     #editor;
+    #editId;
     #worker;
 
     #validator = new ScriptAPIValidator();
 
-    constructor(codeEditor, editor) {
+    constructor(codeEditor, editor, editId) {
         this.#codeEditor = codeEditor;
         this.#editor = editor;
+        this.#editId = editId;
     }
 
     /**
@@ -352,31 +34,10 @@ class ScriptAPI {
         this.#linesStart = subScript.linesStart;
         this.#linesEnd = subScript.linesEnd;
 
-        // Start the subscript specifically on line 2
-        // This lines up the Editor gutter line numbers with anything that errors or console logs
-        const blobText = `'use strict';
-let ${SUBSCRIPT_FUNCTION_NAME} = (api)=>{const self = null; ${subScript.gen}
-};
-
-(()=>{
-${ScriptValidationError.toString()};
-${ScriptAPIValidator.toString()};
-${ScriptAPIDeferrable.toString()};
-${ScriptAPIWorker.toString()};
-
-const workerAPI = new ScriptAPIWorker(self, ${SUBSCRIPT_FUNCTION_NAME});
-${SUBSCRIPT_FUNCTION_NAME} = null;
-workerAPI.start();
-})();
-`;
         const self = this;
-
         try {
-            const blob = new Blob([blobText], {type: 'application/javascript'});
-            this.#scriptBlobURL = URL.createObjectURL(blob);
-            this.#worker = new Worker(this.#scriptBlobURL, {
-                credentials: 'omit',
-                name: this.#scriptName
+            this.#worker = new Worker(`/brewscript/${this.#editId}/${this.#scriptName}`, {
+                credentials: 'omit'
             });
 
             this.#worker.addEventListener("message", (event) => {
@@ -424,12 +85,13 @@ workerAPI.start();
         // This should be SyntaxErrors, since we catch execution errors in a different path
         // Worker SyntaxErrors don't have a stack, so, we have to manually format it
         const adjustedLineNumber = event.lineno + this.#linesStart;
-        const stack = `${event.message}
+        const adjustedMessage = event.message.replace("Uncaught ", "");
+        const stack = `${adjustedMessage}
     at ${ERROR_REPORT_TOPLEVEL_NAME} (${this.#scriptName}:${adjustedLineNumber}:${event.colno})`;
 
         this.#editor?.updateScriptRequest({
             type: "reporterror",
-            message: event.message,
+            message: adjustedMessage,
             stack: stack,
             scriptName: this.#scriptName,
             persist: true
@@ -554,11 +216,11 @@ workerAPI.start();
         // So give an unfiltered error to technical users in the console
         console.error(stack);
 
-        const stackLineRegex = /^(?<pre>\s+at )(?<context>[^\(]+) \((?<desc>.+):(?<lineno>\d+):(?<colno>\d+)\)$/;
+        const stackLineRegex = /^(?<pre>\s+at )(?<context>[^\(\/]+) \((?<desc>.+):(?<lineno>\d+):(?<colno>\d+)\)$/;
         const stackLineNoContextRegex = /^(?<pre>\s+at )(?<desc>.+):(?<lineno>\d+):(?<colno>\d+)$/;
         const sourceStackLines = stack.split('\n');
 
-        const targetStackLines = [sourceStackLines.shift()];
+        const targetStackLines = [sourceStackLines.shift().replace("Uncaught ", "")];
         for (const line of sourceStackLines) {
             let lineMatch = line.match(stackLineRegex);
             let scriptContext;
@@ -572,19 +234,20 @@ workerAPI.start();
                 const adjustedLineno = parseInt(lineMatch.groups.lineno) + this.#linesStart;
                 // Only include lines that would be part of the user written script
                 if (adjustedLineno <= this.#linesEnd) {
-                    const adjustedDesc = lineMatch.groups.desc.replaceAll(this.#scriptBlobURL, this.#scriptName);
                     scriptContext = scriptContext.replaceAll(`ScriptAPIWorker.${SUBSCRIPT_FUNCTION_NAME}`, ERROR_REPORT_TOPLEVEL_NAME);
 
-                    const newStackLine = `${lineMatch.groups.pre}${scriptContext} (${adjustedDesc}:${adjustedLineno}:${lineMatch.groups.colno})`;
+                    // NOTE: groups.desc is intentionally dropped so that we don't have to validate it (avoids using it for phishing)
+                    const newStackLine = `${lineMatch.groups.pre}${scriptContext} (${this.#scriptName}:${adjustedLineno}:${lineMatch.groups.colno})`;
                     targetStackLines.push(newStackLine);
                 }
             }
         }
 
+        const adjustedMessage = message.replaceAll(". ", "! ").replace(/[^a-z\s0-9!]/ig, " ").replace("Uncaught ", "").substring(0, 100);
         const newStack = targetStackLines.join('\n');
         this.#updateScriptRequest({
             type: "reporterror",
-            message: message,
+            message: adjustedMessage,
             stack: newStack,
             scriptName: this.#scriptName,
             persist: true

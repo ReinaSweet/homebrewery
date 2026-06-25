@@ -165,7 +165,7 @@ const Editor = createReactClass({
 	},
 
 	handleCreateScriptAPI : function() {
-		return new ScriptAPI(this.codeEditor.current, this);
+		return new ScriptAPI(this.codeEditor.current, this, this.props.brew.editId);
 	},
 
 	handleViewChange : function(newView){

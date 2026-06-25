@@ -1,7 +1,6 @@
 import _ from 'lodash';
 import yaml from 'js-yaml';
 import request from '../client/homebrew/utils/request-middleware.js';
-import { usePapaParse } from 'react-papaparse';
 
 // Convert the templates from a brew to a Snippets Structure.
 const brewSnippetsToJSON = (menuTitle, userBrewSnippets, themeBundleSnippets = null, full = true) => {
@@ -168,6 +167,25 @@ const splitTextStyleAndMetadata = (brew) => {
 	if (typeof brew.tags === 'string') brew.tags = brew.tags ? [brew.tags] : [];
 };
 
+const getSingleScriptFromText = (brew, scriptId) => {
+	if (!brew.text.startsWith('```metadata')) return null;
+		
+	const index = brew.text.indexOf('\n```\n\n');
+	const metadataSection = brew.text.slice(11, index + 1);
+	const metadata = yaml.load(metadataSection);
+	if (!metadata.scripts) return null;
+	
+	for (const script of metadata.scripts) {
+		for (const subScript of script.subscripts) {
+			if (subScript.name.trim() === scriptId.trim()) {
+				return subScript.gen;
+			}
+		}
+	}
+
+	return null;
+};
+
 const printCurrentBrew = async () => {
 	if (window.typeof !== 'undefined') {
 		// fire a custom event for the print cycle
@@ -284,5 +302,6 @@ export {
 	fetchThemeBundle,
 	brewSnippetsToJSON,
 	brewScriptsToJSON,
-	debugTextMismatch
+	debugTextMismatch,
+	getSingleScriptFromText
 };

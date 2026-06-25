@@ -16,7 +16,7 @@ import path from 'path';
 import fs      from 'fs-extra';
 
 import api from './homebrew.api.js';
-const { homebrewApi, getBrew, getUsersBrewThemes, getCSS } = api;
+const { homebrewApi, getBrew, getUsersBrewThemes, getCSS, getScript } = api;
 import adminApi                    from './admin.api.js';
 import vaultApi                    from './vault.api.js';
 import GoogleActions               from './googleActions.js';
@@ -399,6 +399,11 @@ export default async function createApp(vite) {
 		res.header('Cache-Control', 'no-cache, no-store');	//reload the latest saved brew when pressing back button, not the cached version before save.
 		return next();
 	}));
+
+	//Single brew script for worker execution
+	app.get('/brewscript/:id/:scriptId', asyncHandler(getBrew('edit')), (req, res)=>{
+		getScript(req, res);
+	});
 
 	//New Page from ID
 	app.get('/new/:id', asyncHandler(getBrew('share')), asyncHandler(async(req, res, next)=>{

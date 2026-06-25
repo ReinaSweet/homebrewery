@@ -10,8 +10,9 @@ import asyncHandler                  from 'express-async-handler';
 import { nanoid }                    from 'nanoid';
 import { makePatches, applyPatches, stringifyPatches, parsePatch } from '@sanity/diff-match-patch';
 import { md5 }                       from 'hash-wasm';
-import { splitTextStyleAndMetadata,
-		 brewSnippetsToJSON, brewScriptsToJSON, debugTextMismatch }        from '../shared/helpers.js';
+import { splitTextStyleAndMetadata, brewSnippetsToJSON, brewScriptsToJSON,
+		 debugTextMismatch, getSingleScriptFromText  } from '../shared/helpers.js';
+import { makeBrewScriptWorkerText }  from '../shared/scriptWorker.js';
 import checkClientVersion            from './middleware/check-client-version.js';
 import dbCheck                       from './middleware/dbCheck.js';
 
@@ -207,6 +208,24 @@ const api = {
 			'Content-Type'  : 'text/css'
 		});
 		return res.status(200).send(brew.style);
+	},
+	
+	getScript : async (req, res)=>{
+		const { brew } = req;
+		if(!brew) return res.status(404).send('');
+
+		const scriptId = req.params.scriptId;
+		if (!scriptId) return res.status(404).send('');
+
+		const scriptText = getSingleScriptFromText(brew, scriptId);
+		if (!scriptText)  return res.status(404).send('');
+		
+		res.set({
+			'Cache-Control' : 'no-cache',
+			'Content-Type'  : 'module',
+			'Content-Security-Policy' : "sandbox; default-src 'none'; connect-src 'none';"
+		});
+		return res.status(200).send(makeBrewScriptWorkerText(scriptText));
 	},
 
 	mergeBrewText : (brew)=>{
