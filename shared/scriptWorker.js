@@ -1,4 +1,4 @@
-/*eslint max-lines: ["warn", {"max": 300}]*/
+/*eslint max-lines: ["warn", {"max": 303}]*/
 const SUBSCRIPT_FUNCTION_NAME = 'subScriptFunction';
 
 class ScriptValidationError extends Error {
@@ -166,15 +166,16 @@ class ScriptAPIDeferrable {
 	#callbacks = [];
 	#data = null;
 
-	constructor(worker, resolver) {
-		this.#worker = worker;
-		const self = this;
-
-		this.#promise = new Promise(resolver).catch((error)=>{
-			worker.doReportError(error.message, error.stack);
-		}).then((data)=>{
-			self.resolve(data);
-		});
+	constructor(worker = null, resolver = null) {
+        if (resolver) {
+		    this.#worker = worker;
+		    const self = this;
+		    this.#promise = new Promise(resolver).catch((error)=>{
+		    	worker.doReportError(error.message, error.stack);
+		    }).then((data)=>{
+		    	self.resolve(data);
+		    });
+        }
 	}
 
 	#singlecall(callback) {
@@ -361,6 +362,7 @@ export {
 	SUBSCRIPT_FUNCTION_NAME,
 	makeBrewScriptWorkerText,
 	ScriptAPIValidator,
+    ScriptAPIDeferrable,
     ScriptAPIWorker
 };
 
