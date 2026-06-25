@@ -1,4 +1,4 @@
-/* eslint max-lines: ["error", { "max": 405 }] */
+/* eslint max-lines: ["error", { "max": 498 }] */
 import './codeEditor.less';
 import React, { useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 
@@ -158,24 +158,17 @@ const CodeEditor = forwardRef(
   			: syntaxHighlighting(legacyCustomHighlightStyle);
 
 			let languageExtension;
-			let langSpecificAutocomplete = [];
-			let langSpecificKeymap = [];
+			const langSpecificAutocomplete = [];
+			const langSpecificKeymap = [];
 
-			switch (language) {
-				case 'css': {
-					languageExtension = css();
-					break;
-				}
-				case 'javascript': {
-					languageExtension = javascript();
-					break;
-				}
-				default: {
-					languageExtension = [markdown({ base: markdownLanguage, codeLanguages: languages }), html({ autoCloseTags: true })];
-					langSpecificAutocomplete.push(autocompleteEmoji);
-					langSpecificKeymap.push(markdownKeymap);
-					break;
-				}
+			if(language === 'css') {
+				languageExtension = css();
+			} else if(language === 'javascript') {
+				languageExtension = javascript();
+			} else {
+				languageExtension = [markdown({ base: markdownLanguage, codeLanguages: languages }), html({ autoCloseTags: true })];
+				langSpecificAutocomplete.push(autocompleteEmoji);
+				langSpecificKeymap.push(markdownKeymap);
 			}
 			const themeExtension = Array.isArray(themes[editorTheme]) ? themes[editorTheme] : themes[editorTheme] || themes['default'];
 
@@ -271,21 +264,21 @@ const CodeEditor = forwardRef(
 
 		const findWrappingPositionsInText = (start, end, text)=>{
 			let startPos = text.indexOf(start);
-			if (startPos === -1) return null;
-			
+			if(startPos === -1) return null;
+
 			startPos += start.length;
-			if (text.charAt(startPos + 1) === '\n') ++startPos;
+			if(text.charAt(startPos + 1) === '\n') ++startPos;
 
 			let endPos = text.indexOf(end, startPos);
-			if (endPos === -1) return null;
+			if(endPos === -1) return null;
 
-			if (text.charAt(endPos - 1) === '\n') --endPos;
+			if(text.charAt(endPos - 1) === '\n') --endPos;
 
 			return {
-				start: startPos,
-				end: endPos
+				start : startPos,
+				end   : endPos
 			};
-		}
+		};
 
 		useEffect(()=>{
 			const view = viewRef.current;
@@ -365,7 +358,7 @@ const CodeEditor = forwardRef(
 		useImperativeHandle(ref, ()=>({
 
 			injectText : (text)=>{
-				if (text) {
+				if(text) {
 					const view = viewRef.current;
 
 					view.dispatch(
@@ -376,27 +369,27 @@ const CodeEditor = forwardRef(
 			},
 			getCursorPosition : ()=>viewRef.current.state.selection.main.head,
 
-			getBetween : (start, end) => {
+			getBetween : (start, end)=>{
 				const view = viewRef.current;
-				if(!view) return "";
+				if(!view) return '';
 				const current = view.state.doc.toString();
-				
+
 				const positions = findWrappingPositionsInText(start, end, current);
-				if(!positions) return "";
+				if(!positions) return '';
 
 				return current.substring(positions.start, positions.end);
 			},
 
-			getCursorSelection : () => {
+			getCursorSelection : ()=>{
 				const view = viewRef.current;
-				if(!view) return "";
-				if(view.state.selection.main.empty) return "";
+				if(!view) return '';
+				if(view.state.selection.main.empty) return '';
 
 				const current = view.state.doc.toString();
 				return current.substring(view.state.selection.main.from, view.state.selection.main.to);
 			},
 
-			replaceBetween : (start, end, text) => {
+			replaceBetween : (start, end, text)=>{
 				const view = viewRef.current;
 				if(!view) return;
 				const current = view.state.doc.toString();
@@ -405,30 +398,30 @@ const CodeEditor = forwardRef(
 				if(!positions) return;
 
 				view.dispatch({
-      				changes: { from: positions.start, to: positions.end, insert: text }
+      				changes : { from: positions.start, to: positions.end, insert: text }
 				});
 			},
 
-			getCurrentLength : () => {
+			getCurrentLength : ()=>{
 				const view = viewRef.current;
-				if(!view) return "";
+				if(!view) return '';
 				const current = view.state.doc.toString();
 				return current.length;
 			},
 
-			getPositionOf : (text) => {
+			getPositionOf : (text)=>{
 				const view = viewRef.current;
-				if(!view) return "";
+				if(!view) return '';
 				const current = view.state.doc.toString();
 				return current.indexOf(text);
 			},
 
-			insertAt : (position, text) => {
+			insertAt : (position, text)=>{
 				const view = viewRef.current;
 				if(!view) return;
 
 				view.dispatch({
-      				changes: { from: position, insert: text }
+      				changes : { from: position, insert: text }
 				});
 			},
 

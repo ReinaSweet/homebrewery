@@ -1,70 +1,71 @@
+/*eslint max-lines: ["warn", {"max": 308}]*/
 import _ from 'lodash';
 import yaml from 'js-yaml';
 import request from '../client/homebrew/utils/request-middleware.js';
 
 // Convert the templates from a brew to a Snippets Structure.
-const brewSnippetsToJSON = (menuTitle, userBrewSnippets, themeBundleSnippets = null, full = true) => {
+const brewSnippetsToJSON = (menuTitle, userBrewSnippets, themeBundleSnippets = null, full = true)=>{
 	const textSplit = /^(\\snippet +.+\n)/gm;
 	const mpAsSnippets = [];
 	// Snippets from Themes first.
-	if (themeBundleSnippets) {
+	if(themeBundleSnippets) {
 		for (const themes of themeBundleSnippets) {
-			if (typeof themes !== 'string') {
+			if(typeof themes !== 'string') {
 				const userSnippets = [];
 				const snipSplit = themes.snippets.trim().split(textSplit).slice(1);
 				for (let snips = 0; snips < snipSplit.length; snips += 2) {
-					if (!snipSplit[snips].startsWith('\\snippet ')) break;
+					if(!snipSplit[snips].startsWith('\\snippet ')) break;
 					const snippetName = snipSplit[snips].split(/\\snippet +/)[1].split('\n')[0].trim();
-					if (snippetName.length != 0) {
+					if(snippetName.length != 0) {
 						userSnippets.push({
-							name: snippetName,
-							icon: '',
-							gen: snipSplit[snips + 1].replace(/\n$/, ''),
+							name : snippetName,
+							icon : '',
+							gen  : snipSplit[snips + 1].replace(/\n$/, ''),
 						});
 					}
 				}
-				if (userSnippets.length > 0) {
+				if(userSnippets.length > 0) {
 					mpAsSnippets.push({
-						name: themes.name,
-						icon: '',
-						gen: '',
-						subsnippets: userSnippets
+						name        : themes.name,
+						icon        : '',
+						gen         : '',
+						subsnippets : userSnippets
 					});
 				}
 			}
 		}
 	}
 	// Local Snippets
-	if (userBrewSnippets) {
+	if(userBrewSnippets) {
 		const userSnippets = [];
 		const snipSplit = userBrewSnippets.trim().split(textSplit).slice(1);
 		for (let snips = 0; snips < snipSplit.length; snips += 2) {
-			if (!snipSplit[snips].startsWith('\\snippet ')) break;
+			if(!snipSplit[snips].startsWith('\\snippet ')) break;
 			const snippetName = snipSplit[snips].split(/\\snippet +/)[1].split('\n')[0].trim();
-			if (snippetName.length != 0) {
-				let subSnip = {
-					name: snippetName,
-					gen: snipSplit[snips + 1].replace(/\n$/, ''),
+			if(snippetName.length != 0) {
+				const subSnip = {
+					name : snippetName,
+					gen  : snipSplit[snips + 1].replace(/\n$/, ''),
 				};
 
 				// if(full) subSnip.icon = '';
 				userSnippets.push(subSnip);
 			}
 		}
-		if (userSnippets.length) {
+		if(userSnippets.length) {
 			mpAsSnippets.push({
-				name: menuTitle,
+				name        : menuTitle,
 				// icon        : '',
-				subsnippets: userSnippets
+				subsnippets : userSnippets
 			});
 		}
 	}
 
 	const returnObj = {
-		snippets: mpAsSnippets
+		snippets : mpAsSnippets
 	};
 
-	if (full) {
+	if(full) {
 		returnObj.groupName = 'This Brew';
 		returnObj.icon = 'fas fa-th-list';
 		returnObj.view = 'text';
@@ -73,8 +74,8 @@ const brewSnippetsToJSON = (menuTitle, userBrewSnippets, themeBundleSnippets = n
 	return returnObj;
 };
 
-const yamlSnippetsToText = (yamlObj) => {
-	if (typeof yamlObj == 'string') return yamlObj;
+const yamlSnippetsToText = (yamlObj)=>{
+	if(typeof yamlObj == 'string') return yamlObj;
 
 	let snippetsText = '';
 
@@ -87,26 +88,26 @@ const yamlSnippetsToText = (yamlObj) => {
 };
 
 // Convert the templates from a brew to a Snippets Structure.
-const brewScriptsToJSON = (menuTitle, userBrewScripts, isClientSide = false) => {
+const brewScriptsToJSON = (menuTitle, userBrewScripts, isClientSide = false)=>{
 	const textSplit = /^(\\script +.+\n)/gm;
 	const mpAsScripts = [];
 	let accumulatedLines = 0;
 
-	if (userBrewScripts) {
+	if(userBrewScripts) {
 		const scriptsArray = [];
 		const scriptSplit = userBrewScripts.trim().split(textSplit).slice(1);
 		for (let scriptIndex = 0; scriptIndex < scriptSplit.length; scriptIndex += 2) {
 			const scriptLines = scriptSplit[scriptIndex + 1].replace(/\n$/, '').split('\n');
 
-			if (scriptSplit[scriptIndex].startsWith('\\script ')) {
+			if(scriptSplit[scriptIndex].startsWith('\\script ')) {
 				const scriptName = scriptSplit[scriptIndex].split(/\\script +/)[1].split('\n')[0].trim();
-				if (scriptName.length != 0) {
-					let subScript = {
-						name: scriptName,
-						gen: scriptLines.join('\n')
+				if(scriptName.length != 0) {
+					const subScript = {
+						name : scriptName,
+						gen  : scriptLines.join('\n')
 					};
 
-					if (isClientSide) {
+					if(isClientSide) {
 						subScript.isScript = true;
 						subScript.linesStart = accumulatedLines;
 						subScript.linesEnd = accumulatedLines + scriptLines.length + 1;
@@ -118,23 +119,23 @@ const brewScriptsToJSON = (menuTitle, userBrewScripts, isClientSide = false) => 
 
 			accumulatedLines += scriptLines.length + 1;
 		}
-		if (scriptsArray.length) {
+		if(scriptsArray.length) {
 			mpAsScripts.push({
-				name: menuTitle,
-				subscripts: scriptsArray
+				name       : menuTitle,
+				subscripts : scriptsArray
 			});
 		}
 	}
 
 	const returnObj = {
-		scripts: mpAsScripts
+		scripts : mpAsScripts
 	};
 
 	return returnObj;
 };
 
-const yamlScriptsToText = (yamlObj) => {
-	if (typeof yamlObj == 'string') return yamlObj;
+const yamlScriptsToText = (yamlObj)=>{
+	if(typeof yamlObj == 'string') return yamlObj;
 
 	let scriptsText = '';
 
@@ -146,9 +147,9 @@ const yamlScriptsToText = (yamlObj) => {
 	return scriptsText;
 };
 
-const splitTextStyleAndMetadata = (brew) => {
+const splitTextStyleAndMetadata = (brew)=>{
 	brew.text = brew.text.replaceAll('\r\n', '\n');
-	if (brew.text.startsWith('```metadata')) {
+	if(brew.text.startsWith('```metadata')) {
 		const index = brew.text.indexOf('\n```\n\n');
 		const metadataSection = brew.text.slice(11, index + 1);
 		const metadata = yaml.load(metadataSection);
@@ -157,27 +158,27 @@ const splitTextStyleAndMetadata = (brew) => {
 		brew.scripts = yamlScriptsToText(_.pick(metadata, ['scripts']).scripts || '');
 		brew.text = brew.text.slice(index + 6);
 	}
-	if (brew.text.startsWith('```css')) {
+	if(brew.text.startsWith('```css')) {
 		const index = brew.text.indexOf('\n```\n\n');
 		brew.style = brew.text.slice(7, index + 1);
 		brew.text = brew.text.slice(index + 6);
 	}
 
 	// Handle old brews that still have empty strings in the tags metadata
-	if (typeof brew.tags === 'string') brew.tags = brew.tags ? [brew.tags] : [];
+	if(typeof brew.tags === 'string') brew.tags = brew.tags ? [brew.tags] : [];
 };
 
-const getSingleScriptFromText = (brew, scriptId) => {
-	if (!brew.text.startsWith('```metadata')) return null;
-		
+const getSingleScriptFromText = (brew, scriptId)=>{
+	if(!brew.text.startsWith('```metadata')) return null;
+
 	const index = brew.text.indexOf('\n```\n\n');
 	const metadataSection = brew.text.slice(11, index + 1);
 	const metadata = yaml.load(metadataSection);
-	if (!metadata.scripts) return null;
-	
+	if(!metadata.scripts) return null;
+
 	for (const script of metadata.scripts) {
 		for (const subScript of script.subscripts) {
-			if (subScript.name.trim() === scriptId.trim()) {
+			if(subScript.name.trim() === scriptId.trim()) {
 				return subScript.gen;
 			}
 		}
@@ -186,8 +187,8 @@ const getSingleScriptFromText = (brew, scriptId) => {
 	return null;
 };
 
-const printCurrentBrew = async () => {
-	if (window.typeof !== 'undefined') {
+const printCurrentBrew = async ()=>{
+	if(window.typeof !== 'undefined') {
 		// fire a custom event for the print cycle
 		document.dispatchEvent(new CustomEvent('print:startprep'));
 		try {
@@ -195,13 +196,13 @@ const printCurrentBrew = async () => {
 
 			// get all img elements with lazy loading (currently only elements generated through MarkedJS)
 			const lazyImages = [...iframeDoc.querySelectorAll('img[loading="lazy"]')];
-			lazyImages.forEach((img) => { img.loading = 'eager'; });
+			lazyImages.forEach((img)=>{ img.loading = 'eager'; });
 
 			// waits for images to load before resolving promise and opening print dialog
 			await Promise.all(
 				lazyImages
-					.filter((img) => !img.complete)
-					.map((img) => new Promise((resolve) => { img.onload = resolve; img.onerror = resolve; }))
+					.filter((img)=>!img.complete)
+					.map((img)=>new Promise((resolve)=>{ img.onload = resolve; img.onerror = resolve; }))
 			);
 
 			window.frames['BrewRenderer'].contentWindow.print();
@@ -218,31 +219,31 @@ const printCurrentBrew = async () => {
 	}
 };
 
-const fetchThemeBundle = async (setError, setThemeBundle, renderer, theme) => {
-	if (!renderer || !theme) return;
+const fetchThemeBundle = async (setError, setThemeBundle, renderer, theme)=>{
+	if(!renderer || !theme) return;
 	const res = await request
 		.get(`/api/theme/${renderer}/${theme}`)
-		.catch((err) => {
+		.catch((err)=>{
 			setError(err);
 		});
-	if (!res) {
+	if(!res) {
 		setThemeBundle({});
 		return;
 	}
 	const themeBundle = res.body;
-	themeBundle.joinedStyles = themeBundle.styles.map((style) => `<style>${style}</style>`).join('\n\n');
+	themeBundle.joinedStyles = themeBundle.styles.map((style)=>`<style>${style}</style>`).join('\n\n');
 	setThemeBundle(themeBundle);
 	setError(null);
 };
 
-const debugTextMismatch = (clientTextRaw, serverTextRaw, label) => {
+const debugTextMismatch = (clientTextRaw, serverTextRaw, label)=>{
 	const clientText = clientTextRaw?.normalize('NFC') || '';
 	const serverText = serverTextRaw?.normalize('NFC') || '';
 
 	const clientBuffer = Buffer.from(clientText, 'utf8');
 	const serverBuffer = Buffer.from(serverText, 'utf8');
 
-	if (clientBuffer.equals(serverBuffer)) {
+	if(clientBuffer.equals(serverBuffer)) {
 		console.log(`✅ ${label} text matches byte-for-byte.`);
 		return;
 	}
@@ -253,7 +254,7 @@ const debugTextMismatch = (clientTextRaw, serverTextRaw, label) => {
 
 	// Byte-level diff
 	for (let i = 0; i < Math.min(clientBuffer.length, serverBuffer.length); i++) {
-		if (clientBuffer[i] !== serverBuffer[i]) {
+		if(clientBuffer[i] !== serverBuffer[i]) {
 			console.log(`Byte mismatch at offset ${i}: client=0x${clientBuffer[i].toString(16)} server=0x${serverBuffer[i].toString(16)}`);
 			break;
 		}
@@ -261,8 +262,8 @@ const debugTextMismatch = (clientTextRaw, serverTextRaw, label) => {
 
 	// Char-level diff
 	for (let i = 0; i < Math.min(clientText.length, serverText.length); i++) {
-		if (clientText[i] !== serverText[i]) {
-			const getMismatchContext = (text, index, name, size = 10) => {
+		if(clientText[i] !== serverText[i]) {
+			const getMismatchContext = (text, index, name, size = 10)=>{
 				const lower = Math.max(index - size, 0);
 				const upper = Math.min(index + size, text.length);
 				const slice = `${JSON.stringify(text.slice(lower, index)).slice(1, -1)}\u001B[31m${JSON.stringify(text[i]).slice(1, -1)}\u001B[0m${JSON.stringify(text.slice(index + 1, upper)).slice(1, -1)}`;
@@ -284,7 +285,7 @@ const debugTextMismatch = (clientTextRaw, serverTextRaw, label) => {
 			const clientContext = getMismatchContext(clientText, i, 'Client', boundSize);
 			const serverContext = getMismatchContext(serverText, i, 'Server', boundSize);
 
-			const logContext = (context) => {
+			const logContext = (context)=>{
 				console.log(`  ${context.name} - line ${context.lineNo} : (${context.code})\t${context.slice}`);
 			};
 

@@ -209,21 +209,21 @@ const api = {
 		});
 		return res.status(200).send(brew.style);
 	},
-	
+
 	getScript : async (req, res)=>{
 		const { brew } = req;
 		if(!brew) return res.status(404).send('');
 
 		const scriptId = req.params.scriptId;
-		if (!scriptId) return res.status(404).send('');
+		if(!scriptId) return res.status(404).send('');
 
 		const scriptText = getSingleScriptFromText(brew, scriptId);
-		if (!scriptText)  return res.status(404).send('');
-		
+		if(!scriptText)  return res.status(404).send('');
+
 		res.set({
-			'Cache-Control' : 'no-cache',
-			'Content-Type'  : 'module',
-			'Content-Security-Policy' : "sandbox; default-src 'none'; connect-src 'none';"
+			'Cache-Control'           : 'no-cache',
+			'Content-Type'            : 'module',
+			'Content-Security-Policy' : 'sandbox; default-src \'none\'; connect-src \'none\';'
 		});
 		return res.status(200).send(makeBrewScriptWorkerText(scriptText));
 	},

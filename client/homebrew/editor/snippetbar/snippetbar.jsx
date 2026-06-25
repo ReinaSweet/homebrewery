@@ -150,14 +150,14 @@ const Snippetbar = createReactClass({
 			}
 		}
 
-		let userSnippetsasJSON = brewSnippetsToJSON('Snippets', this.props.brew.snippets, this.props.themeBundle.snippets);
+		const userSnippetsasJSON = brewSnippetsToJSON('Snippets', this.props.brew.snippets, this.props.themeBundle.snippets);
 
 		// Use the snippet interface as is to handle scripts
 		const userScriptsasJSON = brewScriptsToJSON('Scripts', this.props.brew.scripts, true);
-		for (let script of userScriptsasJSON.scripts) {
+		for (const script of userScriptsasJSON.scripts) {
 			userSnippetsasJSON.snippets.push({
-				name: script.name,
-				subsnippets: script.subscripts
+				name        : script.name,
+				subsnippets : script.subscripts
 			});
 		}
 
@@ -336,12 +336,12 @@ const SnippetGroup = createReactClass({
 	displayName     : 'SnippetGroup',
 	getDefaultProps : function() {
 		return {
-			brew             : {},
-			groupName        : '',
-			icon             : 'fas fa-rocket',
-			snippets         : [],
-			onSnippetClick   : function(){},
-			onCreateScriptAPI: function(){}
+			brew              : {},
+			groupName         : '',
+			icon              : 'fas fa-rocket',
+			snippets          : [],
+			onSnippetClick    : function(){},
+			onCreateScriptAPI : function(){}
 		};
 	},
 	handleSnippetClick : function(e, snippet){

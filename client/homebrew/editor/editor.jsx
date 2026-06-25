@@ -253,8 +253,8 @@ const Editor = createReactClass({
 	},
 
 	timeoutScriptRequest : function(){
-		if (this.state.scriptRequest && this.state.scriptRequest.persist) return;
-		
+		if(this.state.scriptRequest && this.state.scriptRequest.persist) return;
+
 		this.setState({
 			scriptRequest : null
 		});
@@ -388,7 +388,7 @@ const Editor = createReactClass({
 					updateBrew={this.props.updateBrew}
 				/>
 
-				<ScriptRequestNotification 
+				<ScriptRequestNotification
 					request={this.state.scriptRequest}
 					updateScriptRequest={this.updateScriptRequest}
 				/>
