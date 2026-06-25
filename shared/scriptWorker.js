@@ -1,4 +1,4 @@
-/*eslint max-lines: ["warn", {"max": 303}]*/
+/*eslint max-lines: ["warn", {"max": 304}]*/
 const SUBSCRIPT_FUNCTION_NAME = 'subScriptFunction';
 
 class ScriptValidationError extends Error {
@@ -71,42 +71,29 @@ class ScriptAPIValidator {
      * validate 'get' functions
      */
 	getBetween(...args) {
-		if(!this.#validateTypes('getBetween', args, ['string', 'string'])) {
-			return false;
-		}
+		this.#validateTypes('getBetween', args, ['string', 'string']);
 		return true;
 	}
 
 	getSelected(...args) {
-		if(!this.#validateTypes('getSelected', args, [])) {
-			return false;
-		}
+		this.#validateTypes('getSelected', args, []);
 		return true;
 	}
 
 	getCSVFromFile(...args) {
-		if(!this.#validateTypes('getCSVFromFile', args, ['string'], 1)) {
-			return false;
-		}
-
-		if(!this.#validateUserTextForDisplay('getCSVFromFile', args[0])) {
-			return false;
-		}
+		this.#validateTypes('getCSVFromFile', args, ['string'], 1);
+		this.#validateUserTextForDisplay('getCSVFromFile', args[0]);
 		return true;
 	}
 
 	getCSVFromSheets(...args) {
-		if(!this.#validateTypes('getCSVFromSheets', args, ['string', 'number', 'string'], 2)) {
-			return false;
-		}
+		this.#validateTypes('getCSVFromSheets', args, ['string', 'number', 'string'], 2);
 
 		if(args[0].match(/[^\-a-z0-9_]/i)) {
 			throw new ScriptValidationError('getCSVFromSheets', `URL is ill-formed`);
 		}
 
-		if(!this.#validateUserTextForDisplay('getCSVFromSheets', args[2])) {
-			return false;
-		}
+		this.#validateUserTextForDisplay('getCSVFromSheets', args[2]);
 		return true;
 	}
 
@@ -114,37 +101,27 @@ class ScriptAPIValidator {
      * validate 'do' functions
      */
 	doReplaceBetween(...args) {
-		if(!this.#validateTypes('doReplaceBetween', args, ['string', 'string', 'string'])) {
-			return false;
-		}
+		this.#validateTypes('doReplaceBetween', args, ['string', 'string', 'string']);
 		return true;
 	}
 
 	doReplaceSelected(...args) {
-		if(!this.#validateTypes('doReplaceSelected', args, ['string'])) {
-			return false;
-		}
+		this.#validateTypes('doReplaceSelected', args, ['string']);
 		return true;
 	}
 
 	doInsertAfter(...args) {
-		if(!this.#validateTypes('doInsertAfter', args, ['string', 'string'])) {
-			return false;
-		}
+		this.#validateTypes('doInsertAfter', args, ['string', 'string']);
 		return true;
 	}
 
 	doAppendToStart(...args) {
-		if(!this.#validateTypes('doAppendToStart', args, ['string'])) {
-			return false;
-		}
+		this.#validateTypes('doAppendToStart', args, ['string']);
 		return true;
 	}
 
 	doAppendToEnd(...args) {
-		if(!this.#validateTypes('doAppendToEnd', args, ['string'])) {
-			return false;
-		}
+		this.#validateTypes('doAppendToEnd', args, ['string']);
 		return true;
 	}
 
@@ -152,9 +129,7 @@ class ScriptAPIValidator {
      * validate utility 'do' functions
      */
 	doReportError(...args) {
-		if(!this.#validateTypes('doReportError', args, ['string', 'string'], 1)) {
-			return false;
-		}
+		this.#validateTypes('doReportError', args, ['string', 'string'], 1);
 		return true;
 	}
 };
@@ -167,8 +142,8 @@ class ScriptAPIDeferrable {
 	#data = null;
 
 	constructor(worker = null, resolver = null) {
+		this.#worker = worker;
         if (resolver) {
-		    this.#worker = worker;
 		    const self = this;
 		    this.#promise = new Promise(resolver).catch((error)=>{
 		    	worker.doReportError(error.message, error.stack);
@@ -272,28 +247,24 @@ class ScriptAPIWorker {
 		if(this.#validator.getBetween(start, end, args)) {
 			return this.#postAndExpect('getBetween', [start, end]);
 		}
-		return null;
 	}
 
 	getSelected(...args) {
 		if(this.#validator.getSelected(args)) {
 			return this.#postAndExpect('getSelected', []);
 		}
-		return null;
 	}
 
 	getCSVFromFile(message = '', ...args) {
 		if(this.#validator.getCSVFromFile(message, args)) {
 			return this.#postAndExpect('getCSVFromFile', [message]);
 		}
-		return null;
 	}
 
 	getCSVFromSheets(sheetId, gid = 0, message = '', ...args) {
 		if(this.#validator.getCSVFromSheets(sheetId, gid, message, args)) {
 			return this.#postAndExpect('getCSVFromSheets', [sheetId, gid, message]);
 		}
-		return null;
 	}
 
 	/**
@@ -334,9 +305,8 @@ class ScriptAPIWorker {
      */
 	doReportError(message, stack = '', ...args) {
 		if(this.#validator.doReportError(message, stack, args)) {
-			return this.#post('doReportError', [message, stack]);
+			this.#post('doReportError', [message, stack]);
 		}
-		return null;
 	}
 };
 
@@ -361,6 +331,7 @@ workerAPI.start();
 export {
 	SUBSCRIPT_FUNCTION_NAME,
 	makeBrewScriptWorkerText,
+    ScriptValidationError,
 	ScriptAPIValidator,
     ScriptAPIDeferrable,
     ScriptAPIWorker
