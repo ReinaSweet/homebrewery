@@ -360,7 +360,8 @@ workerAPI.start();
 export {
 	SUBSCRIPT_FUNCTION_NAME,
 	makeBrewScriptWorkerText,
-	ScriptAPIValidator
+	ScriptAPIValidator,
+    ScriptAPIWorker
 };
 
 export default ScriptAPIWorker;
