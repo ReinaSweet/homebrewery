@@ -33,7 +33,7 @@ const INITIAL_CONTENT = dedent`
 	<link href="${brewRendererStylesUrl}" rel="stylesheet" />
 	<link href="${headerNavStylesUrl}" rel="stylesheet" />
 	<base target="_top">
-	</head><body style='overflow: hidden'><div></div></body></html>`;
+	</head><body style='overflow: hidden'><div id='brewContainer'></div></body></html>`;
 
 
 //v=====----------------------< Brew Page Component >---------------------=====v//
